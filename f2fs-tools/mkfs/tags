@@ -1,0 +1,49 @@
+AM_CFLAGS	Makefile.am	/^AM_CFLAGS = -Wall -DWITH_BLKDISCARD$/
+AM_CPPFLAGS	Makefile.am	/^AM_CPPFLAGS = ${libuuid_CFLAGS} -I$(top_srcdir)\/in/
+Mf2fs_format_main	f2fs_format_main.c	/^int main(int argc, char *argv[])$/
+_GNU_SOURCE	f2fs_format_utils.c	12
+_LARGEFILE64_SOURCE	f2fs_format.c	9
+_LARGEFILE64_SOURCE	f2fs_format_main.c	9
+_LARGEFILE64_SOURCE	f2fs_format_utils.c	10
+_LARGEFILE64_SOURCE	f2fs_format_utils.h	9
+_LARGEFILE_SOURCE	f2fs_format_utils.c	9
+configure_extension_list	f2fs_format.c	/^static void configure_extension_list(void)$/
+cp	f2fs_format.c	26
+f2fs_add_default_dentry_root	f2fs_format.c	/^static int f2fs_add_default_dentry_root(void)$/
+f2fs_create_root_dir	f2fs_format.c	/^static int f2fs_create_root_dir(void)$/
+f2fs_format_device	f2fs_format.c	/^int f2fs_format_device(void)$/
+f2fs_init_nat_area	f2fs_format.c	/^static int f2fs_init_nat_area(void)$/
+f2fs_init_sit_area	f2fs_format.c	/^static int f2fs_init_sit_area(void)$/
+f2fs_parse_options	f2fs_format_main.c	/^static void f2fs_parse_options(int argc, char *arg/
+f2fs_prepare_super_block	f2fs_format.c	/^static int f2fs_prepare_super_block(void)$/
+f2fs_trim_device	f2fs_format_utils.c	/^int f2fs_trim_device()$/
+f2fs_update_nat_root	f2fs_format.c	/^static int f2fs_update_nat_root(void)$/
+f2fs_write_check_point_pack	f2fs_format.c	/^static int f2fs_write_check_point_pack(void)$/
+f2fs_write_root_inode	f2fs_format.c	/^static int f2fs_write_root_inode(void)$/
+f2fs_write_super_block	f2fs_format.c	/^static int f2fs_write_super_block(void)$/
+get_cp	f2fs_format.c	/^#define get_cp(member)		\\$/
+get_cp_le16	f2fs_format.c	/^#define get_cp_le16(member)			le16_to_cpu(cp->memb/
+get_cp_le32	f2fs_format.c	/^#define get_cp_le32(member)			le32_to_cpu(cp->memb/
+get_cp_le64	f2fs_format.c	/^#define get_cp_le64(member)			le64_to_cpu(cp->memb/
+get_sb	f2fs_format.c	/^#define get_sb(member)		\\$/
+get_sb_le16	f2fs_format.c	/^#define get_sb_le16(member)			le16_to_cpu(sb.membe/
+get_sb_le32	f2fs_format.c	/^#define get_sb_le32(member)			le32_to_cpu(sb.membe/
+get_sb_le64	f2fs_format.c	/^#define get_sb_le64(member)			le64_to_cpu(sb.membe/
+last_section	f2fs_format.c	/^#define last_section(cur)	(cur + (config.secs_per_/
+last_zone	f2fs_format.c	/^#define last_zone(cur)		((cur - 1) * config.segs_p/
+media_ext_lists	f2fs_format.c	91
+mkfs_f2fs_LDADD	Makefile.am	/^mkfs_f2fs_LDADD = ${libuuid_LIBS} $(top_builddir)\//
+mkfs_f2fs_SOURCES	Makefile.am	/^mkfs_f2fs_SOURCES = f2fs_format_main.c f2fs_format/
+mkfs_usage	f2fs_format_main.c	/^static void mkfs_usage()$/
+next_zone	f2fs_format.c	/^#define next_zone(cur)		(config.cur_seg[cur] + con/
+prev_zone	f2fs_format.c	/^#define prev_zone(cur)		(config.cur_seg[cur] - con/
+sb	f2fs_format.c	25
+sbin_PROGRAMS	Makefile.am	/^sbin_PROGRAMS = mkfs.f2fs$/
+set_cp	f2fs_format.c	/^#define set_cp(member, val)	\\$/
+set_cp_le16	f2fs_format.c	/^#define set_cp_le16(member, val)		(cp->member = cp/
+set_cp_le32	f2fs_format.c	/^#define set_cp_le32(member, val)		(cp->member = cp/
+set_cp_le64	f2fs_format.c	/^#define set_cp_le64(member, val)		(cp->member = cp/
+set_sb	f2fs_format.c	/^#define set_sb(member, val)	\\$/
+set_sb_le16	f2fs_format.c	/^#define set_sb_le16(member, val)		(sb.member = cpu/
+set_sb_le32	f2fs_format.c	/^#define set_sb_le32(member, val)		(sb.member = cpu/
+set_sb_le64	f2fs_format.c	/^#define set_sb_le64(member, val)		(sb.member = cpu/
