@@ -135,7 +135,7 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 }
 
 /*
- * 15.02.16. Jinsoo Yoo - Hanyang University.
+ * 15.02.16. Jinsoo Yoo - Hanyang University
  * Add a dummy page to a bio and make the number of IO pages
  * even. This function allocate new block address for the dummy
  * page, but the sit state for the page become invalid immediately.
