@@ -173,12 +173,12 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 
 	/* Get new page (need modification) */
 	new_page = grab_cache_page(mapping, next_page_index);
-	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
 	if(new_page == NULL){
 		printk("ERROR[f2fs_bio_add_dummy_page] new page allocation fail!\n");
 		return;
 	}
 	else{
+		unlock_page(new_page);
 		set_page_writeback(new_page);
 		inc_page_count(sbi, F2FS_WRITEBACK);
 	}
