@@ -163,31 +163,20 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	next_page_index = p_bio->bi_io_vec[vcnt-1].bv_page->index + 1;
 	type = __get_segment_type(p_bio->bi_io_vec[vcnt-1].bv_page, io->fio.type);
 
-//TEMP
-	printk("\t1. m->nrpages: %lu\n", mapping->nrpages);
-
 	/* Get new page (need modification) */
-	new_page = __page_cache_alloc(cache_gfp_mask);
-//	new_page = grab_cache_page(mapping, next_page_index);
-//	new_page = grab_cache_page_write_begin(mapping, next_page_index, 0);
-//	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
-//	SetPageUptodate(new_page);
+	new_page = grab_cache_page(mapping, next_page_index);
+	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
 	if(new_page == NULL){
 		printk("ERROR[f2fs_bio_add_dummy_page] new page allocation fail!\n");
 		return;
 	}
-//TEMP
-	printk("\t2. m->nrpages: %lu, bio->bi_vcnt: %u\n", mapping->nrpages, io->bio->bi_vcnt);
+	else{
+		set_page_writeback(new_page);
+		inc_page_count(sbi, F2FS_WRITEBACK);
+	}
 
 	/* Add dummy page to the bio structe */
 	bio_add_page(p_bio, new_page, PAGE_CACHE_SIZE, 0);
-
-//TEMP
-//	printk("\t[here] %d %p\n", p_bio->bi_io_vec[vcnt].bv_page->mapping->nrpages,
-//					p_bio->bi_io_vec[vcnt].bv_page->mapping->host);
-
-//TEMP
-	printk("\t3. bio->bi_vcnt: %d, bi_sector %d\n", io->bio->bi_vcnt, p_bio->bi_iter.bi_sector);
 
 	/* Update CURSEG_I */
 	curseg = CURSEG_I(sbi, type);
@@ -221,9 +210,6 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 
 	/* Update io info */
 	io->last_block_in_bio = new_blkaddr;
-
-//TEMP
-	printk("\t4. new_blkaddr: %u\n", new_blkaddr);
 }
 
 static void __submit_merged_bio(struct f2fs_bio_info *io)
@@ -247,9 +233,6 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 		f2fs_bio_add_dummy_page(io);
 	}
 #endif
-//TEMP
-	printk("\t\t[__submit_merged_bio] 0.\n");
-
 	rw = fio->rw;
 
 	if (is_read_io(rw)) {
@@ -269,14 +252,9 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 			submit_bio(rw, io->bio);
 			wait_for_completion(&wait);
 		} else {
-//TEMP
-			printk("\t\t[__submit_merged_bio] 1. io->bio:%p, vcnt:%d\n", io->bio, io->bio->bi_vcnt);
-//			submit_bio(rw, io->bio);
+			submit_bio(rw, io->bio);
 		}
 	}
-
-//TEMP
-	printk("\t\t[__submit_merged_bio] 2.\n");
 
 	io->bio = NULL;
 }
@@ -286,9 +264,6 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 {
 	enum page_type btype = PAGE_TYPE_OF_BIO(type);
 	struct f2fs_bio_info *io;
-
-//TEMP
-	printk("\t[f2fs_submit_merged_bio] Start\n");
 
 	io = is_read_io(rw) ? &sbi->read_io : &sbi->write_io[btype];
 
@@ -305,8 +280,6 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 
 	__submit_merged_bio(io);
 	up_write(&io->io_rwsem);
-//TEMP
-	printk("\t[f2fs_submit_merged_bio] End\n");
 }
 
 /*
@@ -1086,17 +1059,11 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 	if (locked)
 		mutex_unlock(&sbi->writepages);
 
-//TEMP
-	printk("[f2fs_write_data_pages] Start \n");
-
 	f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
 	remove_dirty_dir_inode(inode);
 
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
-
-//TEMP
-	printk("[f2fs_write_data_pages] End\n");
 
 	return ret;
 

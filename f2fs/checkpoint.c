@@ -816,6 +816,8 @@ static void wait_on_all_pages_writeback(struct f2fs_sb_info *sbi)
 {
 	DEFINE_WAIT(wait);
 
+	printk("[wait_on_all_pages_writebacke] nrpages: %d, %p\n", sbi->nr_pages[F2FS_WRITEBACK], &sbi->nr_pages[F2FS_WRITEBACK]);
+
 	for (;;) {
 		prepare_to_wait(&sbi->cp_wait, &wait, TASK_UNINTERRUPTIBLE);
 
@@ -824,6 +826,9 @@ static void wait_on_all_pages_writeback(struct f2fs_sb_info *sbi)
 
 		io_schedule();
 	}
+
+	printk("[wait_on_all_pages_writeback] nrpages: %d, %p\n", sbi->nr_pages[F2FS_WRITEBACK], &sbi->nr_pages[F2FS_WRITEBACK]);
+
 	finish_wait(&sbi->cp_wait, &wait);
 }
 

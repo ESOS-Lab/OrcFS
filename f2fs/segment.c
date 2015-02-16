@@ -1129,9 +1129,6 @@ void allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
 
 	*new_blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
 
-//TEMP
-	printk("[allocate_data_block] new_blkaddr: %u, type: %d, curseg: %p\n", *new_blkaddr, type, curseg);
-
 	/*
 	 * __add_sum_entry should be resided under the curseg_mutex
 	 * because, this function updates a summary entry in the
