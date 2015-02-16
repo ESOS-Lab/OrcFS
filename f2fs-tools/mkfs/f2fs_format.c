@@ -482,8 +482,12 @@ static int f2fs_write_check_point_pack(void)
 		set_cp(cur_data_segno[i], 0xffffffff);
 	}
 
-	set_cp(cur_node_blkoff[0], 1);
-	set_cp(cur_data_blkoff[0], 1);
+/*{*/
+//	set_cp(cur_node_blkoff[0], 1);
+//	set_cp(cur_data_blkoff[0], 1);
+	set_cp(cur_node_blkoff[0], 2);
+	set_cp(cur_data_blkoff[0], 2);
+/*}*/
 	set_cp(valid_block_count, 2);
 	set_cp(rsvd_segment_count, config.reserved_segments);
 	set_cp(overprov_segment_count, (get_sb(segment_count_main) -
@@ -713,11 +717,19 @@ static int f2fs_write_super_block(void)
 
 static int f2fs_write_root_inode(void)
 {
-	struct f2fs_node *raw_node = NULL;
+/*{*/
+	//struct f2fs_node *raw_node = NULL;
+    struct f2fs_node_with_dummy *raw_node = NULL;
+/*}*/
+
 	u_int64_t blk_size_bytes, data_blk_nor;
 	u_int64_t main_area_node_seg_blk_offset = 0;
 
-	raw_node = calloc(F2FS_BLKSIZE, 1);
+/*{*/
+	//raw_node = calloc(F2FS_BLKSIZE, 1);
+	raw_node = calloc(F2FS_BLKSIZE, 2);
+/*}*/
+
 	if (raw_node == NULL) {
 		MSG(1, "\tError: Calloc Failed for raw_node!!!\n");
 		return -1;
@@ -766,12 +778,21 @@ static int f2fs_write_root_inode(void)
         main_area_node_seg_blk_offset *= blk_size_bytes;
 
 	DBG(1, "\tWriting root inode (hot node), at offset 0x%08"PRIx64"\n", main_area_node_seg_blk_offset);
-	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
+/*{*/
+//	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
+//		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
+//		return -1;
+//	}
+//
+//	memset(raw_node, 0xff, sizeof(struct f2fs_node));
+
+	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE * 2)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
 	}
 
-	memset(raw_node, 0xff, sizeof(struct f2fs_node));
+	memset(raw_node, 0xff, sizeof(struct f2fs_node_with_dummy));
+/*}*/
 
 	/* avoid power-off-recovery based on roll-forward policy */
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
@@ -780,10 +801,17 @@ static int f2fs_write_root_inode(void)
         main_area_node_seg_blk_offset *= blk_size_bytes;
 
 	DBG(1, "\tWriting root inode (warm node), at offset 0x%08"PRIx64"\n", main_area_node_seg_blk_offset);
-	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
+/*{*/
+//	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
+//		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
+//		return -1;
+//	}
+
+	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE * 2)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
 	}
+/*}*/
 	free(raw_node);
 	return 0;
 }
@@ -829,10 +857,18 @@ static int f2fs_update_nat_root(void)
 
 static int f2fs_add_default_dentry_root(void)
 {
-	struct f2fs_dentry_block *dent_blk = NULL;
+/*{*/
+//	struct f2fs_dentry_block *dent_blk = NULL;
+	struct f2fs_dentry_block *dent_blk_with_dummy = NULL;
+/*}*/
+
 	u_int64_t blk_size_bytes, data_blk_offset = 0;
 
-	dent_blk = calloc(F2FS_BLKSIZE, 1);
+/*{*/
+//	dent_blk = calloc(F2FS_BLKSIZE, 1);
+	dent_blk = calloc(F2FS_BLKSIZE, 2);
+/*}*/
+
 	if(dent_blk == NULL) {
 		MSG(1, "\tError: Calloc Failed for dent_blk!!!\n");
 		return -1;
@@ -859,11 +895,17 @@ static int f2fs_add_default_dentry_root(void)
 	data_blk_offset *= blk_size_bytes;
 
 	DBG(1, "\tWriting default dentry root, at offset 0x%08"PRIx64"\n", data_blk_offset);
+/*{*/
+//	if (dev_write(dent_blk, data_blk_offset, F2FS_BLKSIZE)) {
+//		MSG(1, "\tError: While writing the dentry_blk to disk!!!\n");
+//		return -1;
+//	}
 
-	if (dev_write(dent_blk, data_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(dent_blk, data_blk_offset, F2FS_BLKSIZE * 2)) {
 		MSG(1, "\tError: While writing the dentry_blk to disk!!!\n");
 		return -1;
 	}
+/*}*/
 
 	free(dent_blk);
 	return 0;
