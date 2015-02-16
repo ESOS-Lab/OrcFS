@@ -512,6 +512,19 @@ struct f2fs_node {
 	struct node_footer footer;
 } __attribute__((packed));
 
+/*[@@]{*/
+struct f2fs_node_with_dummy {
+	union {
+		struct f2fs_inode i;
+		struct direct_node dn;
+		struct indirect_node in;
+	};
+	struct node_footer footer;
+	// 꼬리에 똑같은 사이즈의 dummy를 붙임.
+	struct f2fs_node dummy;
+} __attribute__((packed));
+/*}*/
+
 /*
  * For NAT entries
  */
@@ -707,6 +720,17 @@ struct f2fs_dentry_block {
 	struct f2fs_dir_entry dentry[NR_DENTRY_IN_BLOCK];
 	__u8 filename[NR_DENTRY_IN_BLOCK][F2FS_SLOT_LEN];
 } __attribute__((packed));
+
+/*[@@] {*/
+struct f2fs_dentry_block_with_dummy {
+	__u8 dentry_bitmap[SIZE_OF_DENTRY_BITMAP];
+	__u8 reserved[SIZE_OF_RESERVED];
+	struct f2fs_dir_entry dentry[NR_DENTRY_IN_BLOCK];
+	__u8 filename[NR_DENTRY_IN_BLOCK][F2FS_SLOT_LEN];
+	// 똑같은 사이즈의 f2fs_dentry_block 타입의 더미 추가
+	struct f2fs_dentry_block dummy;
+} __attribute__((packed));
+/*}*/
 
 /* for inline dir */
 #define NR_INLINE_DENTRY	(MAX_INLINE_DATA * BITS_PER_BYTE / \

@@ -1,4 +1,214 @@
-cscope 15 $HOME/F2FS/f2fs-tools               0000355188
+cscope 15 $HOME/work/proj_rainbow/F2FS_rainbow/f2fs-tools               0000356381
+	@config.h
+
+5 
+	#F2FS_MAJOR_VERSION
+ 1
+
+	)
+
+8 
+	#F2FS_MINOR_VERSION
+ 4
+
+	)
+
+11 
+	#F2FS_TOOLS_DATE
+ "2014-12-29"
+
+	)
+
+14 
+	#F2FS_TOOLS_VERSION
+ "1.4.0"
+
+	)
+
+17 
+	#HAVE_BYTESWAP_H
+ 1
+
+	)
+
+21 
+	#HAVE_DECL_BSWAP_64
+ 1
+
+	)
+
+24 
+	#HAVE_DLFCN_H
+ 1
+
+	)
+
+27 
+	#HAVE_FCNTL_H
+ 1
+
+	)
+
+30 
+	#HAVE_GETMNTENT
+ 1
+
+	)
+
+33 
+	#HAVE_INTTYPES_H
+ 1
+
+	)
+
+36 
+	#HAVE_LINUX_FALLOC_H
+ 1
+
+	)
+
+39 
+	#HAVE_LINUX_FS_H
+ 1
+
+	)
+
+42 
+	#HAVE_MEMORY_H
+ 1
+
+	)
+
+45 
+	#HAVE_MEMSET
+ 1
+
+	)
+
+48 
+	#HAVE_MNTENT_H
+ 1
+
+	)
+
+51 
+	#HAVE_STDINT_H
+ 1
+
+	)
+
+54 
+	#HAVE_STDLIB_H
+ 1
+
+	)
+
+57 
+	#HAVE_STRINGS_H
+ 1
+
+	)
+
+60 
+	#HAVE_STRING_H
+ 1
+
+	)
+
+63 
+	#HAVE_SYS_IOCTL_H
+ 1
+
+	)
+
+66 
+	#HAVE_SYS_MOUNT_H
+ 1
+
+	)
+
+69 
+	#HAVE_SYS_STAT_H
+ 1
+
+	)
+
+72 
+	#HAVE_SYS_TYPES_H
+ 1
+
+	)
+
+75 
+	#HAVE_UNISTD_H
+ 1
+
+	)
+
+79 
+	#LT_OBJDIR
+ ".libs/"
+
+	)
+
+82 
+	#PACKAGE
+ "f2fs-toﬁs"
+
+	)
+
+85 
+	#PACKAGE_BUGREPORT
+ "löux-f2fs-devñ@li°s.sour˚f‹ge.√t"
+
+	)
+
+88 
+	#PACKAGE_NAME
+ "F2FSÅoﬁs"
+
+	)
+
+91 
+	#PACKAGE_STRING
+ "F2FSÅoﬁ†1.4.0"
+
+	)
+
+94 
+	#PACKAGE_TARNAME
+ "f2fs-toﬁs"
+
+	)
+
+97 
+	#PACKAGE_URL
+ ""
+
+	)
+
+100 
+	#PACKAGE_VERSION
+ "1.4.0"
+
+	)
+
+103 
+	#STDC_HEADERS
+ 1
+
+	)
+
+106 
+	#VERSION
+ "1.4.0"
+
+	)
+
+110 #i‚de‡
+__˝lu•lus
+
+
 	@fsck/dump.c
 
 11 
@@ -28378,7 +28588,7 @@ PRIx64
 d©a_blk_off£t
 );
 
-862 i‡(
+863 i‡(
 	`dev_wrôe
 (
 dít_blk
@@ -28388,253 +28598,253 @@ d©a_blk_off£t
 F2FS_BLKSIZE
 )) {
 
-863 
+864 
 	`MSG
 (1, "\tError: While writingÅhe dentry_blkÅo disk!!!\n");
 
-867 
+868 
 	`‰ì
 (
 dít_blk
 );
 
-869 
+870 
 	}
 }
 
-871 
+872 
 	$f2fs_¸óã_roŸ_dú
 ()
 
-873 
+874 
 îr
  = 0;
 
-875 
+876 
 îr
  = 
 	`f2fs_wrôe_roŸ_öode
 ();
 
-876 i‡(
+877 i‡(
 îr
  < 0) {
 
-877 
+878 
 	`MSG
 (1, "\tError: FailedÅo writeÑoot inode!!!\n");
 
-878 
+879 
 exô
 ;
 
-881 
+882 
 îr
  = 
 	`f2fs_upd©e_«t_roŸ
 ();
 
-882 i‡(
+883 i‡(
 îr
  < 0) {
 
-883 
+884 
 	`MSG
 (1, "\tError: FailedÅo update NAT forÑoot!!!\n");
 
-884 
+885 
 exô
 ;
 
-887 
+888 
 îr
  = 
 	`f2fs_add_deÁu…_díåy_roŸ
 ();
 
-888 i‡(
+889 i‡(
 îr
  < 0) {
 
-889 
+890 
 	`MSG
 (1, "\tError: FailedÅoádd default dentries forÑoot!!!\n");
 
-890 
+891 
 exô
 ;
 
-892 
+893 
 exô
 :
 
-893 i‡(
+894 i‡(
 îr
 )
 
-894 
+895 
 	`MSG
 (1, "\tError: CouldÇot createÅheÑoot directory!!!\n");
 
-896  
+897  
 îr
 ;
 
-897 
+898 
 	}
 }
 
-899 
+900 
 	$f2fs_f‹m©_devi˚
 ()
 
-901 
+902 
 îr
  = 0;
 
-903 
+904 
 îr
 
 	`f2fs_¥ï¨e_su≥r_block
 ();
 
-904 i‡(
+905 i‡(
 îr
  < 0) {
 
-905 
+906 
 	`MSG
 (0, "\tError: FailedÅoÖrepareá super block!!!\n");
 
-906 
+907 
 exô
 ;
 
-909 
+910 
 îr
  = 
 	`f2fs_åim_devi˚
 ();
 
-910 i‡(
+911 i‡(
 îr
  < 0) {
 
-911 
+912 
 	`MSG
 (0, "\tError: FailedÅoÅrim whole device!!!\n");
 
-912 
+913 
 exô
 ;
 
-915 
+916 
 îr
  = 
 	`f2fs_öô_sô_¨ó
 ();
 
-916 i‡(
+917 i‡(
 îr
  < 0) {
 
-917 
+918 
 	`MSG
 (0, "\tError: FailedÅo InitialiseÅhe SIT AREA!!!\n");
 
-918 
+919 
 exô
 ;
 
-921 
+922 
 îr
  = 
 	`f2fs_öô_«t_¨ó
 ();
 
-922 i‡(
+923 i‡(
 îr
  < 0) {
 
-923 
+924 
 	`MSG
 (0, "\tError: FailedÅo InitialiseÅhe NAT AREA!!!\n");
 
-924 
+925 
 exô
 ;
 
-927 
+928 
 îr
  = 
 	`f2fs_¸óã_roŸ_dú
 ();
 
-928 i‡(
+929 i‡(
 îr
  < 0) {
 
-929 
+930 
 	`MSG
 (0, "\tError: FailedÅo createÅheÑoot directory!!!\n");
 
-930 
+931 
 exô
 ;
 
-933 
+934 
 îr
  = 
 	`f2fs_wrôe_check_poöt_∑ck
 ();
 
-934 i‡(
+935 i‡(
 îr
  < 0) {
 
-935 
+936 
 	`MSG
 (0, "\tError: FailedÅo writeÅhe checkÖointÖack!!!\n");
 
-936 
+937 
 exô
 ;
 
-939 
+940 
 îr
  = 
 	`f2fs_wrôe_su≥r_block
 ();
 
-940 i‡(
+941 i‡(
 îr
  < 0) {
 
-941 
+942 
 	`MSG
 (0, "\tError: FailedÅo writeÅhe Super Block!!!\n");
 
-942 
+943 
 exô
 ;
 
-944 
+945 
 exô
 :
 
-945 i‡(
+946 i‡(
 îr
 )
 
-946 
+947 
 	`MSG
 (0, "\tError: CouldÇot formatÅhe device!!!\n");
 
-948  
+949  
 îr
 ;
 
-949 
+950 
 	}
 }
 
@@ -63960,8 +64170,9 @@ __END_DECLS
 .
 1
 /usr/include
-53
-1129
+54
+1138
+config.h
 fsck/dump.c
 fsck/f2fs.h
 fsck/fsck.c
