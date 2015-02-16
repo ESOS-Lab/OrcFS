@@ -859,7 +859,7 @@ static int f2fs_add_default_dentry_root(void)
 {
 /*{*/
 //	struct f2fs_dentry_block *dent_blk = NULL;
-	struct f2fs_dentry_block *dent_blk_with_dummy = NULL;
+	struct f2fs_dentry_block_with_dummy *dent_blk = NULL;
 /*}*/
 
 	u_int64_t blk_size_bytes, data_blk_offset = 0;
