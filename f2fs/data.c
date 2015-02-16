@@ -92,6 +92,15 @@ static struct bio *__bio_alloc(struct f2fs_sb_info *sbi, block_t blk_addr,
 	return bio;
 }
 
+/*
+ * 15.02.16. Jinsoo Yoo - Hanyang University
+ * F2FS for DA Map have to make 8KByte aligned write request to main area.
+ * f2fs_need_dummy_page() checks that an IO needs a dummy page before
+ * it send to block I/O Layer.
+ * return:
+ * 	true - The write request need a dummy page.
+ *	false - The number of IO pages is even or not for main area.
+ */
 static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 {
 	int last_block_in_bio;
@@ -99,17 +108,23 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 	int n_blocks;
 	int start_block_in_bio;
 
+	/* Check if bio has NULL pointer */
 	if(!io->bio){
 		printk("ERROR[f2fs_need_dummy_page] bio is NULL\n");
 		return false;
 	}
 
-	last_block_in_bio = io->last_block_in_bio;
-	last_block_offset = last_block_in_bio % 4096;
+	/* Get the number of IO pages */
 	n_blocks = io->bio->bi_vcnt;
 
+	/* Calculate start block address */
+	last_block_in_bio = io->last_block_in_bio;
+	last_block_offset = last_block_in_bio % 4096;
 	start_block_in_bio = last_block_in_bio - n_blocks + 1;
 
+	/* If the block address is in Main area of F2FS
+	 * and the number of IO pages is odd, 
+	 * dummy page is needed. */
 	if((start_block_in_bio >= F2FS_P_START_BLOCK)
 		&& (n_blocks % N_PAGE_ALIGN != 0)){
 
@@ -120,7 +135,11 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 }
 
 /*
- * io->io_rwsem is alleady locked
+ * 15.02.16. Jinsoo Yoo - Hanyang University.
+ * Add a dummy page to a bio and make the number of IO pages
+ * even. This function allocate new block address for the dummy
+ * page, but the sit state for the page become invalid immediately.
+ * io->io_rwsem is alleady locked before this function is called.
  */
 static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 {
@@ -137,9 +156,6 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	int vcnt;
 	int next_page_index;
 
-	int fgp_flags = FGP_LOCK|FGP_CREAT|FGP_NOFS|FGP_NOWAIT;
-	gfp_t cache_gfp_mask;
-
 	sbi = io->sbi;
 	p_bio = io->bio;
 	vcnt = p_bio->bi_vcnt;
@@ -149,14 +165,6 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	if(mapping == NULL){
 		printk("ERROR[f2fs_bio_add_dummy_page] mapping is NULL!\n");
 		return;
-	}
-
-	/* Make gfp mask */
-	cache_gfp_mask = mapping_gfp_mask(mapping);
-	if((fgp_flags & FGP_WRITE) && mapping_cap_account_dirty(mapping))
-		cache_gfp_mask |= __GFP_WRITE;
-	if (fgp_flags & FGP_NOFS) {
-		cache_gfp_mask &= ~__GFP_FS;
 	}
 
 	/* Get next page index */
@@ -182,36 +190,52 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	curseg = CURSEG_I(sbi, type);
 	sit_i = SIT_I(sbi);
 
+	/* Lock curseg mutext */
 	mutex_lock(&curseg->curseg_mutex);
 
 	/* Get new block address & increase it */
 	new_blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
 
+	/* Lock sit_i mutext */
 	mutex_lock(&sit_i->sentry_lock);
+
+	/* Move next block offset */
 	__refresh_next_blkoff(sbi, curseg);
 
+	/* Increse block counter in sbi struct */
 	stat_inc_block_count(sbi, curseg);
 
-	/* If needed, allocate new segment */
+	/* If needed, allocate new segment to curseg */
 	if (!__has_curseg_space(sbi, type))
 		sit_i->s_ops->allocate_segment(sbi, type, false);
 
-	/* Invalid the block address for dummy page */
+	/* Invalid sit entry for the dummy block address */
 	update_sit_entry(sbi, new_blkaddr, 1);
 	update_sit_entry(sbi, new_blkaddr, -1);
 	locate_dirty_segment(sbi, GET_SEGNO(sbi, new_blkaddr));
 
+	/* Unlock sit_i mutex */
 	mutex_unlock(&sit_i->sentry_lock);
+
+	/* What is this? */
 	if (new_page && IS_NODESEG(type)){
 		fill_node_footer_blkaddr(new_page, NEXT_FREE_BLKADDR(sbi, curseg));
 	}
 
+	/* Unlock curseg mutex */
 	mutex_unlock(&curseg->curseg_mutex);
 
-	/* Update io info */
+	/* Update a variable of io struct */
 	io->last_block_in_bio = new_blkaddr;
 }
 
+/*
+ * 15.02.06 Jinsoo Yoo - Hanyang University
+ * Before sending an IO to block I/O Layer,
+ * This function checks the bio needs a dummy page.
+ * If it is needed, add dummy page to bio by calling
+ * f2fs_bio_add_dummy_page().
+ */
 static void __submit_merged_bio(struct f2fs_bio_info *io)
 {
 	struct f2fs_io_info *fio = &io->fio;
@@ -226,7 +250,6 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 #ifdef F2FS_DA_MAP
 	/* Check if the bio need dummy page write */
 	need_dummy_page = f2fs_need_dummy_page(io);
-
 	if(need_dummy_page == true)
 	{
 		/* Add dummy page to the bio */
