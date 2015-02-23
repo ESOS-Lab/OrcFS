@@ -1185,7 +1185,9 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 		unsigned int nid, block_t old_blkaddr, block_t *new_blkaddr)
 {
 	struct f2fs_summary sum;
+
 	set_summary(&sum, nid, 0, 0);
+
 	do_write_page(sbi, page, old_blkaddr, new_blkaddr, &sum, fio);
 }
 
@@ -1197,6 +1199,7 @@ void write_data_page(struct page *page, struct dnode_of_data *dn,
 	struct node_info ni;
 
 	f2fs_bug_on(sbi, dn->data_blkaddr == NULL_ADDR);
+
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, dn->ofs_in_node, ni.version);
 

@@ -154,7 +154,6 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 
 	int type;
 	int vcnt;
-	int next_page_index;
 
 	sbi = io->sbi;
 	p_bio = io->bio;
@@ -167,23 +166,36 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 		return;
 	}
 
-	/* Get next page index */
-	next_page_index = p_bio->bi_io_vec[vcnt-1].bv_page->index + 1;
 	type = __get_segment_type(p_bio->bi_io_vec[vcnt-1].bv_page, io->fio.type);
 
 	/* Get new page (need modification) */
-	new_page = grab_cache_page(mapping, next_page_index);
-	if(new_page == NULL){
-		printk("ERROR[f2fs_bio_add_dummy_page] new page allocation fail!\n");
-		return;
-	}
-	else{
-		unlock_page(new_page);
-		set_page_writeback(new_page);
-		inc_page_count(sbi, F2FS_WRITEBACK);
+repeat:
+	new_page = page_cache_alloc(mapping);
+	if(!new_page){
+		cond_resched();
+		goto repeat;
 	}
 
+	set_page_writeback(new_page);
+	inc_page_count(sbi, F2FS_WRITEBACK);
+	unlock_page(new_page);
+
+//TEMP
+/*
+	if(io->fio.type == NODE){
+		dec_page_count(sbi, F2FS_DIRTY_NODES);
+	}
+	else if(io->fio.type == META){
+		dec_page_count(sbi, F2FS_DIRTY_META);
+	}
+*/
+
 	/* Add dummy page to the bio structe */
+	if(vcnt == MAX_BIO_BLOCKS(sbi)){
+		printk("ERROR[f2fs_bio_add_dummy_page] bio is full\n");
+		f2fs_put_page(new_page, 0);
+		return;
+	}
 	bio_add_page(p_bio, new_page, PAGE_CACHE_SIZE, 0);
 
 	/* Update CURSEG_I */
@@ -218,9 +230,11 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	mutex_unlock(&sit_i->sentry_lock);
 
 	/* What is this? */
+/*
 	if (new_page && IS_NODESEG(type)){
 		fill_node_footer_blkaddr(new_page, NEXT_FREE_BLKADDR(sbi, curseg));
 	}
+*/
 
 	/* Unlock curseg mutex */
 	mutex_unlock(&curseg->curseg_mutex);
@@ -247,15 +261,6 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	if (!io->bio)
 		return;
 
-#ifdef F2FS_DA_MAP
-	/* Check if the bio need dummy page write */
-	need_dummy_page = f2fs_need_dummy_page(io);
-	if(need_dummy_page == true)
-	{
-		/* Add dummy page to the bio */
-		f2fs_bio_add_dummy_page(io);
-	}
-#endif
 	rw = fio->rw;
 
 	if (is_read_io(rw)) {
@@ -265,6 +270,16 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	} else {
 		trace_f2fs_submit_write_bio(io->sbi->sb, rw,
 							fio->type, io->bio);
+
+#ifdef F2FS_DA_MAP
+		/* Check if the bio need dummy page write */
+		need_dummy_page = f2fs_need_dummy_page(io);
+		if(need_dummy_page == true)
+		{
+			/* Add dummy page to the bio */
+			f2fs_bio_add_dummy_page(io);
+		}
+#endif
 		/*
 		 * META_FLUSH is only from the checkpoint procedure, and we
 		 * should wait this metadata bio for FS consistency.
