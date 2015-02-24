@@ -32,6 +32,10 @@ static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
 
+#ifdef F2FS_DA_MAP
+unsigned int offset = 0;
+#endif
+
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
  * MSB and LSB are reversed in a byte by f2fs_set_bit.
@@ -546,6 +550,57 @@ static void set_prefree_as_free_segments(struct f2fs_sb_info *sbi)
 	mutex_unlock(&dirty_i->seglist_lock);
 }
 
+// FIXME: Cheon
+#ifdef F2FS_DA_MAP
+static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
+{
+	struct page* new_page = NULL;
+//	int err = 0;
+	void* dst_addr;
+	int info[3];
+	block_t max_blkaddr;
+
+	/* Get new page */
+	new_page = alloc_page(GFP_KERNEL);
+	
+	if(!new_page){
+		pr_debug("[Cheon] Cannot allocate a page.\n");
+		free_page((unsigned long)new_page);
+		return;
+	}
+
+	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
+
+	/*	if(err){
+		page_cache_release(new_page);
+		return;
+	}
+	 */
+
+	/* Get Maximum blkaddr */
+	max_blkaddr = MAX_BLKADDR(sbi);
+
+	/* Write Invalid segment number to the page */
+	dst_addr = kmap(new_page);
+
+	info[0] = segno;
+	info[1] = (segno * sbi->blocks_per_seg * sbi->blocksize) / 512;
+	info[2] = 4096;
+
+	pr_debug("[Cheon] Segment info: %d %d %d\n", info[0], info[1], info[2]);
+
+	memcpy(dst_addr, info, sizeof(int) * 3);
+	kunmap(new_page);
+
+	/* Submit */
+	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + offset, WRITE_SYNC);
+	offset = (offset + 16) % 1073741824;
+
+//	page_cache_release(new_page);
+//	free_page(new_page);
+}
+#endif
+
 void clear_prefree_segments(struct f2fs_sb_info *sbi)
 {
 	struct list_head *head = &(SM_I(sbi)->discard_list);
@@ -563,9 +618,15 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 			break;
 		end = find_next_zero_bit(prefree_map, MAIN_SEGS(sbi),
 								start + 1);
-
+#ifndef F2FS_DA_MAP
+		for (i = start; i < end; i++){
+			clear_bit(i, prefree_map);
+			submit_invalid_segment_number(sbi, i);
+		}
+#else
 		for (i = start; i < end; i++)
 			clear_bit(i, prefree_map);
+#endif
 
 		dirty_i->nr_dirty[PRE] -= end - start;
 
@@ -1185,9 +1246,7 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 		unsigned int nid, block_t old_blkaddr, block_t *new_blkaddr)
 {
 	struct f2fs_summary sum;
-
 	set_summary(&sum, nid, 0, 0);
-
 	do_write_page(sbi, page, old_blkaddr, new_blkaddr, &sum, fio);
 }
 
@@ -1199,7 +1258,6 @@ void write_data_page(struct page *page, struct dnode_of_data *dn,
 	struct node_info ni;
 
 	f2fs_bug_on(sbi, dn->data_blkaddr == NULL_ADDR);
-
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, dn->ofs_in_node, ni.version);
 
