@@ -126,6 +126,7 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 	 * and the number of IO pages is odd, 
 	 * dummy page is needed. */
 	if((start_block_in_bio >= F2FS_P_START_BLOCK)
+		&& (start_block_in_bio < MAX_BLKADDR(sbi))
 		&& (n_blocks % N_PAGE_ALIGN != 0)){
 
 		return true;

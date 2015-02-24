@@ -33,7 +33,7 @@ static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
 
 #ifdef F2FS_DA_MAP
-unsigned int offset = 0;
+unsigned int gc_lba_offset = 0;
 #endif
 
 /*
@@ -593,8 +593,10 @@ static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 	kunmap(new_page);
 
 	/* Submit */
-	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + offset, WRITE_SYNC);
-	offset = (offset + 16) % 1073741824;
+	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + gc_lba_offset, WRITE_SYNC);
+
+	gc_lba_offset += 16;
+	gc_lba_offset &= 0x001FFFFF;
 
 //	page_cache_release(new_page);
 //	free_page(new_page);
