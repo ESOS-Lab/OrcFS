@@ -107,12 +107,14 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 	int last_block_offset;
 	int n_blocks;
 	int start_block_in_bio;
+	struct f2fs_sb_info *sbi;
 
 	/* Check if bio has NULL pointer */
 	if(!io->bio){
 		printk("ERROR[f2fs_need_dummy_page] bio is NULL\n");
 		return false;
 	}
+	sbi = io->sbi;
 
 	/* Get the number of IO pages */
 	n_blocks = io->bio->bi_vcnt;
