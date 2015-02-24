@@ -55,12 +55,6 @@ preOccupy()
 	echo ""
 	echo "    preoccupy the device"
 
-#	mobibench -p ${MNT}/preWrtn -f 8 -r 4 -a 0 -y 0 # prewritten
-##	sync
-
-##	mobibench -p ${MNT}/preWrtn -f 4 -r 4 -a 0 -y 0 # prewritten
-##	sync
-
 	mobibench -p ${MNT}/preWrtn -f 4 -r 4 -a 0 -y 0 # prewritten
 #	sync
 
