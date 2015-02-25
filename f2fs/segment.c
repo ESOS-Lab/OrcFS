@@ -550,12 +550,13 @@ static void set_prefree_as_free_segments(struct f2fs_sb_info *sbi)
 	mutex_unlock(&dirty_i->seglist_lock);
 }
 
-// FIXME: Cheon
+/* 15.02.23, S.Y.Cheon, Hanyang Univ.
+ * Provide prefree segment information for segment cleaning.
+ */
 #ifdef F2FS_DA_MAP
 static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 {
 	struct page* new_page = NULL;
-//	int err = 0;
 	void* dst_addr;
 	int info[3];
 	block_t max_blkaddr;
@@ -564,41 +565,30 @@ static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 	new_page = alloc_page(GFP_KERNEL);
 	
 	if(!new_page){
-		pr_debug("[Cheon] Cannot allocate a page.\n");
+		printk(KERN_INFO "[Cheon] Cannot allocate a page.\n");
 		free_page((unsigned long)new_page);
 		return;
 	}
 
 	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
 
-	/*	if(err){
-		page_cache_release(new_page);
-		return;
-	}
-	 */
-
 	/* Get Maximum blkaddr */
-	max_blkaddr = MAX_BLKADDR(sbi);
+	max_blkaddr = MAX_BLKADDR(sbi) - 8192;
 
 	/* Write Invalid segment number to the page */
 	dst_addr = kmap(new_page);
 
 	info[0] = segno;
-	info[1] = (segno * sbi->blocks_per_seg * sbi->blocksize) / 512;
-	info[2] = 4096;
-
-	pr_debug("[Cheon] Segment info: %d %d %d\n", info[0], info[1], info[2]);
+	info[1] = segno * SEGMENT_SIZE(sbi) / 512;
+	info[2] = SEGMENT_SIZE(sbi) / 512;
 
 	memcpy(dst_addr, info, sizeof(int) * 3);
 	kunmap(new_page);
 
 	/* Submit */
 	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + gc_lba_offset, WRITE_SYNC);
+	gc_lba_offset = (gc_lba_offset + 16) & 0x001FFFF;
 
-	gc_lba_offset += 16;
-	gc_lba_offset &= 0x001FFFFF;
-
-//	page_cache_release(new_page);
 //	free_page(new_page);
 }
 #endif
@@ -620,15 +610,13 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 			break;
 		end = find_next_zero_bit(prefree_map, MAIN_SEGS(sbi),
 								start + 1);
-#ifndef F2FS_DA_MAP
+
 		for (i = start; i < end; i++){
 			clear_bit(i, prefree_map);
+#ifdef F2FS_DA_MAP
 			submit_invalid_segment_number(sbi, i);
-		}
-#else
-		for (i = start; i < end; i++)
-			clear_bit(i, prefree_map);
 #endif
+		}
 
 		dirty_i->nr_dirty[PRE] -= end - start;
 
