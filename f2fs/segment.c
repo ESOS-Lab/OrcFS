@@ -1035,8 +1035,10 @@ static void allocate_segment_by_default(struct f2fs_sb_info *sbi,
 		new_curseg(sbi, type, false);
 	else if (curseg->alloc_type == LFS && is_next_segment_free(sbi, type))
 		new_curseg(sbi, type, false);
+#ifndef F2FS_DA_MAP
 	else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
 		change_curseg(sbi, type, true);
+#endif
 	else
 		new_curseg(sbi, type, false);
 
