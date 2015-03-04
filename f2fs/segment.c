@@ -620,7 +620,8 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 		for (i = start; i < end; i++){
 			clear_bit(i, prefree_map);
 #ifdef F2FS_DA_MAP
-			submit_invalid_segment_number(sbi, i);
+//			submit_invalid_segment_number(sbi, i);
+			submit_invalid_segment_number(sbi, GET_R2L_SEGNO(FREE_I(sbi), i));
 #endif
 		}
 
