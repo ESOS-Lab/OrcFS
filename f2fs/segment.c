@@ -33,7 +33,7 @@ static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
 
 #ifdef F2FS_DA_MAP
-unsigned int gc_lba_offset = 0;
+unsigned int gc_block_offset = 0;
 #endif
 
 /*
@@ -554,7 +554,7 @@ static void set_prefree_as_free_segments(struct f2fs_sb_info *sbi)
  * Provide prefree segment information for segment cleaning.
  */
 #ifdef F2FS_DA_MAP
-static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
+void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 {
 	struct page* new_page = NULL;
 	void* dst_addr;
@@ -565,15 +565,18 @@ static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 	new_page = alloc_page(GFP_KERNEL);
 	
 	if(!new_page){
-		printk(KERN_INFO "[Cheon] Cannot allocate a page.\n");
+		printk(KERN_INFO "ERROR[submit_invalid_segment_number] Cannot allocate a page.\n");
 		free_page((unsigned long)new_page);
 		return;
 	}
+	unlock_page(new_page);
+	set_page_writeback(new_page);
+        inc_page_count(sbi, F2FS_WRITEBACK);
 
 	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
 
 	/* Get Maximum blkaddr */
-	max_blkaddr = MAX_BLKADDR(sbi) - 8192;
+	max_blkaddr = MAX_BLKADDR(sbi);
 
 	/* Write Invalid segment number to the page */
 	dst_addr = kmap(new_page);
@@ -586,10 +589,13 @@ static void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 	kunmap(new_page);
 
 	/* Submit */
-	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + gc_lba_offset, WRITE_SYNC);
-	gc_lba_offset = (gc_lba_offset + 16) & 0x001FFFF;
+	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + gc_block_offset, WRITE_SYNC);
 
-//	free_page(new_page);
+	/* Update gc blk offset*/
+	gc_block_offset++;
+	if(unlikely(gc_block_offset >= 262144)){
+		gc_block_offset = 0;
+	}
 }
 #endif
 

@@ -769,4 +769,5 @@ void __refresh_next_blkoff(struct f2fs_sb_info *sbi,
 bool __has_curseg_space(struct f2fs_sb_info *sbi, int type);
 void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del);
 void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno);
+void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
 #endif
