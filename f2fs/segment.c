@@ -582,7 +582,7 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 	dst_addr = kmap(new_page);
 
 	info[0] = segno;
-	info[1] = segno * SEGMENT_SIZE(sbi) / 512;
+	info[1] = START_BLOCK(sbi, segno) * 512;
 	info[2] = SEGMENT_SIZE(sbi) / 512;
 
 	memcpy(dst_addr, info, sizeof(int) * 3);

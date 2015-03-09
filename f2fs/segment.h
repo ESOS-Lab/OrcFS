@@ -12,8 +12,6 @@
 
 /* Define for Disaggregate Mapping - Jinsoo, 150119*/
 #define F2FS_DA_MAP
-#define F2FS_P_START_SECTOR	195313664
-#define F2FS_P_START_BLOCK	((F2FS_P_START_SECTOR)/(8))
 
 #define NAND_PAGE_SIZE		8192
 #define N_PAGE_ALIGN	((NAND_PAGE_SIZE)/(PAGE_SIZE))
