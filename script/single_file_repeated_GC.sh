@@ -158,7 +158,7 @@ _mountFS()
 		*) echo "available file system: f2fs" ;;
 	esac
 	
-	echo 20 > /sys/fs/f2fs/sdb/reclaim_segments
+	echo 20 > /sys/fs/f2fs/sda5/reclaim_segments
 }
 
 

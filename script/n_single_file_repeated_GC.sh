@@ -57,7 +57,8 @@ preOccupy()
 	WRITTEN=`echo $TotalSize*85/100 | bc`
 	mobibench -p ${MNT}/preWrtn -f $WRITTEN -r 512 -a 0 -y 0 # prewritten
 
-	toWrite=`echo 10485760 | bc`
+#	toWrite=`echo 10485760 | bc`
+	toWrite=`echo $TotalSize*12/100 | bc`
 	mobibench -p ${MNT}/gc_test -f $toWrite -r 512 -a 0 -y 0 
 
 	sync
@@ -137,7 +138,8 @@ _mkfs()
 
 	case $FileSystem in 
 		f2fs) 
-		      mkfs -t f2fs -l f2fs -t 0 $DEV 
+#		      mkfs -t f2fs -l f2fs -t 0 $DEV 
+		      mkfs -t f2fs -l f2fs -t 0 $DEV 4194304	# 2GByte
 		      echo " mkfs f2fs successful" ;; 
 		ext4)
 		      mkfs -t ext4 -L ext4 -E nodiscard -E lazy_itable_init=0 -E lazy_journal_init=0 $DEV
@@ -160,7 +162,7 @@ _mountFS()
 		*) echo "available file system: f2fs" ;;
 	esac
 	
-	echo 20 > /sys/fs/f2fs/sdb/reclaim_segments
+	echo 20 > /sys/fs/f2fs/sda5/reclaim_segments
 }
 
 
