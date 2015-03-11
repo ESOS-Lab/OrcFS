@@ -569,14 +569,13 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 		free_page((unsigned long)new_page);
 		return;
 	}
-	unlock_page(new_page);
 	set_page_writeback(new_page);
         inc_page_count(sbi, F2FS_WRITEBACK);
 
 	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
 
 	/* Get Maximum blkaddr */
-	max_blkaddr = MAX_BLKADDR(sbi);
+	max_blkaddr = MAX_BLKADDR(sbi) + 2;
 
 	/* Write Invalid segment number to the page */
 	dst_addr = kmap(new_page);
@@ -593,7 +592,7 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 
 	/* Update gc blk offset*/
 	gc_block_offset++;
-	if(unlikely(gc_block_offset >= 262144)){
+	if(unlikely(gc_block_offset >= 262142)){
 		gc_block_offset = 0;
 	}
 }
