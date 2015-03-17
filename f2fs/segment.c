@@ -36,6 +36,12 @@ static struct kmem_cache *inmem_entry_slab;
 unsigned int gc_block_offset = 0;
 #endif
 
+#ifdef F2FS_GET_FS_WAF
+unsigned long long len_user_data = 0;
+unsigned long long len_fs_write = 0;
+unsigned long long len_gc_write = 0;
+#endif
+
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
  * MSB and LSB are reversed in a byte by f2fs_set_bit.
@@ -571,6 +577,7 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 	}
 	set_page_writeback(new_page);
         inc_page_count(sbi, F2FS_WRITEBACK);
+	unlock_page(new_page);
 
 	zero_user_segment(new_page, 0, PAGE_CACHE_SIZE);
 
@@ -589,6 +596,10 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
 
 	/* Submit */
 	f2fs_submit_page_bio(sbi, new_page, max_blkaddr + gc_block_offset, WRITE_SYNC);
+
+#ifdef F2FS_GET_FS_WAF
+	len_fs_write -= 4096;
+#endif
 
 	/* Update gc blk offset*/
 	gc_block_offset++;
@@ -924,7 +935,12 @@ static void new_curseg(struct f2fs_sb_info *sbi, int type, bool new_sec)
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
 	unsigned int segno = curseg->segno;
 	int dir = ALLOC_LEFT;
-
+//TEMP
+/*
+	int old_sec_nb;
+	int new_sec_nb;
+	int old_seg_nb; 
+*/
 	write_sum_page(sbi, curseg->sum_blk,
 				GET_SUM_BLOCK(sbi, segno));
 	if (type == CURSEG_WARM_DATA || type == CURSEG_COLD_DATA)
@@ -933,10 +949,21 @@ static void new_curseg(struct f2fs_sb_info *sbi, int type, bool new_sec)
 	if (test_opt(sbi, NOHEAP))
 		dir = ALLOC_RIGHT;
 
+//TEMP
+/*
+	old_sec_nb = segno / sbi->segs_per_sec;
+	old_seg_nb = segno;
+*/
+
 	get_new_segment(sbi, &segno, new_sec, dir);
 	curseg->next_segno = segno;
 	reset_curseg(sbi, type, 1);
 	curseg->alloc_type = LFS;
+//TEMP
+/*
+	new_sec_nb = segno / sbi->segs_per_sec; 
+	printk("%d\t%d\t%d\t%d\n", old_sec_nb, old_seg_nb, new_sec_nb, segno);
+*/
 }
 
 static void __next_free_blkoff(struct f2fs_sb_info *sbi,

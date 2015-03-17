@@ -677,6 +677,10 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 
 	blk_start_plug(&plug);
 
+#ifdef F2FS_GET_FS_WAF
+	len_gc_write += get_valid_blocks(sbi, segno, 1)*4096;
+#endif
+
 	sum = page_address(sum_page);
 
 	switch (GET_SUM_TYPE((&sum->footer))) {

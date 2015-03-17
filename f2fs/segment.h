@@ -12,6 +12,7 @@
 
 /* Define for Disaggregate Mapping - Jinsoo, 150119*/
 #define F2FS_DA_MAP
+#define F2FS_GET_FS_WAF
 
 #define NAND_PAGE_SIZE		8192
 #define N_PAGE_ALIGN	((NAND_PAGE_SIZE)/(PAGE_SIZE))
@@ -768,4 +769,10 @@ bool __has_curseg_space(struct f2fs_sb_info *sbi, int type);
 void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del);
 void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno);
 void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
+#endif
+
+#ifdef F2FS_GET_FS_WAF
+extern unsigned long long len_user_data;
+extern unsigned long long len_fs_write;
+extern unsigned long long len_gc_write;
 #endif

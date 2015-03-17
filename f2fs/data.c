@@ -297,6 +297,13 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 		}
 	}
 
+#ifdef F2FS_GET_FS_WAF
+	if(!is_read_io(fio->rw)){
+		len_fs_write += io->bio->bi_iter.bi_size;
+
+		printk("%llu\t%llu\t%llu\n", len_user_data, len_fs_write, len_gc_write);
+	}
+#endif
 	io->bio = NULL;
 }
 
@@ -342,6 +349,12 @@ int f2fs_submit_page_bio(struct f2fs_sb_info *sbi, struct page *page,
 		f2fs_put_page(page, 1);
 		return -EFAULT;
 	}
+
+#ifdef F2FS_GET_FS_WAF
+        if(!is_read_io(rw)){
+                len_gc_write += bio->bi_iter.bi_size;
+        }
+#endif
 
 	submit_bio(rw, bio);
 	return 0;
@@ -1135,6 +1148,10 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	int err = 0;
 
 	trace_f2fs_write_begin(inode, pos, len, flags);
+
+#ifdef F2FS_GET_FS_WAF
+	len_user_data += len;
+#endif
 
 	f2fs_balance_fs(sbi);
 repeat:
