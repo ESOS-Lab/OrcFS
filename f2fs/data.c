@@ -244,6 +244,10 @@ repeat:
 
 	/* Update a variable of io struct */
 	io->last_block_in_bio = new_blkaddr;
+
+#ifdef F2FS_GET_FS_WAF
+	dummy_page_count++;
+#endif
 }
 
 /*
@@ -300,8 +304,6 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 #ifdef F2FS_GET_FS_WAF
 	if(!is_read_io(fio->rw)){
 		len_fs_write += io->bio->bi_iter.bi_size;
-
-		printk("%llu\t%llu\t%llu\n", len_user_data, len_fs_write, len_gc_write);
 	}
 #endif
 	io->bio = NULL;
@@ -352,7 +354,7 @@ int f2fs_submit_page_bio(struct f2fs_sb_info *sbi, struct page *page,
 
 #ifdef F2FS_GET_FS_WAF
         if(!is_read_io(rw)){
-                len_gc_write += bio->bi_iter.bi_size;
+                len_fs_write += bio->bi_iter.bi_size;
         }
 #endif
 

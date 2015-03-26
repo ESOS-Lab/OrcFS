@@ -532,11 +532,7 @@ static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 		.rw = WRITE_SYNC,
 	};
 
-#ifdef F2FS_DA_MAP
-	if (false){
-#else
 	if (gc_type == BG_GC) {
-#endif
 		if (PageWriteback(page))
 			goto out;
 		set_page_dirty(page);

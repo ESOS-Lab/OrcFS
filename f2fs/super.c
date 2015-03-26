@@ -427,6 +427,9 @@ static void f2fs_put_super(struct super_block *sb)
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 
 	if (sbi->s_proc) {
+#ifdef F2FS_GET_FS_WAF
+		remove_proc_entry("waf_info", sbi->s_proc);
+#endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
 	}
@@ -571,6 +574,20 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	return 0;
 }
 
+#ifdef F2FS_GET_FS_WAF
+static int waf_info_seq_show(struct seq_file *seq, void *offset)
+{
+	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\n", len_user_data, len_fs_write, len_gc_write, dummy_page_count);
+
+	len_user_data = 0;
+	len_fs_write = 0;
+	len_gc_write = 0;
+	dummy_page_count = 0;
+
+	return 0;
+}
+#endif
+
 static int segment_info_seq_show(struct seq_file *seq, void *offset)
 {
 	struct super_block *sb = seq->private;
@@ -598,10 +615,27 @@ static int segment_info_seq_show(struct seq_file *seq, void *offset)
 	return 0;
 }
 
+#ifdef F2FS_GET_FS_WAF
+static int waf_info_open_fs(struct inode *inode, struct file *file)
+{
+	return single_open(file, waf_info_seq_show, PDE_DATA(inode));
+}
+#endif
+
 static int segment_info_open_fs(struct inode *inode, struct file *file)
 {
 	return single_open(file, segment_info_seq_show, PDE_DATA(inode));
 }
+
+#ifdef F2FS_GET_FS_WAF
+static const struct file_operations f2fs_waf_info_fops = {
+	.owner = THIS_MODULE,
+	.open = waf_info_open_fs,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+#endif
 
 static const struct file_operations f2fs_seq_segment_info_fops = {
 	.owner = THIS_MODULE,
@@ -1087,9 +1121,18 @@ try_onemore:
 	if (f2fs_proc_root)
 		sbi->s_proc = proc_mkdir(sb->s_id, f2fs_proc_root);
 
+#ifdef F2FS_GET_FS_WAF
+	if (sbi->s_proc){
+		proc_create_data("waf_info", S_IRUGO, sbi->s_proc,
+				 &f2fs_waf_info_fops, sb);
+		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
+				 &f2fs_seq_segment_info_fops, sb);
+	}
+#else
 	if (sbi->s_proc)
 		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
 				 &f2fs_seq_segment_info_fops, sb);
+#endif
 
 	if (test_opt(sbi, DISCARD)) {
 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
@@ -1135,6 +1178,9 @@ free_kobj:
 	kobject_del(&sbi->s_kobj);
 free_proc:
 	if (sbi->s_proc) {
+#ifdef F2FS_GET_FS_WAF
+		remove_proc_entry("waf_info", sbi->s_proc);
+#endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
 	}

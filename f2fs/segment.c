@@ -40,6 +40,7 @@ unsigned int gc_block_offset = 0;
 unsigned long long len_user_data = 0;
 unsigned long long len_fs_write = 0;
 unsigned long long len_gc_write = 0;
+unsigned long long dummy_page_count = 0;
 #endif
 
 /*
@@ -630,8 +631,8 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 		for (i = start; i < end; i++){
 			clear_bit(i, prefree_map);
 #ifdef F2FS_DA_MAP
-//			submit_invalid_segment_number(sbi, i);
-			submit_invalid_segment_number(sbi, GET_R2L_SEGNO(FREE_I(sbi), i));
+			submit_invalid_segment_number(sbi, i);
+//			submit_invalid_segment_number(sbi, GET_R2L_SEGNO(FREE_I(sbi), i));
 #endif
 		}
 

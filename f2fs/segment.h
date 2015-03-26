@@ -14,6 +14,10 @@
 #define F2FS_DA_MAP
 #define F2FS_GET_FS_WAF
 
+#ifdef F2FS_GET_FS_WAF
+#include <linux/proc_fs.h>
+#endif
+
 #define NAND_PAGE_SIZE		8192
 #define N_PAGE_ALIGN	((NAND_PAGE_SIZE)/(PAGE_SIZE))
 
@@ -775,4 +779,5 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
 extern unsigned long long len_gc_write;
+extern unsigned long long dummy_page_count;
 #endif
