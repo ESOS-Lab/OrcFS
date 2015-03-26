@@ -561,7 +561,7 @@ static void set_prefree_as_free_segments(struct f2fs_sb_info *sbi)
  * Provide prefree segment information for segment cleaning.
  */
 #ifdef F2FS_DA_MAP
-void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno)
+void submit_free_section_number(struct f2fs_sb_info *sbi, int segno)
 {
 	struct page* new_page = NULL;
 	void* dst_addr;
@@ -618,6 +618,10 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 	unsigned long *prefree_map = dirty_i->dirty_segmap[PRE];
 	unsigned int start = 0, end = -1;
 
+#ifdef F2FS_DA_MAP
+	int prev_sec_nb = -1;
+	int sec_nb = 0;
+#endif
 	mutex_lock(&dirty_i->seglist_lock);
 
 	while (1) {
@@ -631,8 +635,11 @@ void clear_prefree_segments(struct f2fs_sb_info *sbi)
 		for (i = start; i < end; i++){
 			clear_bit(i, prefree_map);
 #ifdef F2FS_DA_MAP
-			submit_invalid_segment_number(sbi, i);
-//			submit_invalid_segment_number(sbi, GET_R2L_SEGNO(FREE_I(sbi), i));
+			sec_nb = GET_SECNO(sbi, i);
+			if(prev_sec_nb != sec_nb){
+				submit_free_section_number(sbi, sec_nb);
+				prev_sec_nb = sec_nb;
+			}
 #endif
 		}
 
