@@ -161,7 +161,11 @@ int ra_meta_pages(struct f2fs_sb_info *sbi, block_t start, int nrpages, int type
 			continue;
 		}
 
+#ifdef F2FS_DA_MAP
+		f2fs_submit_page_mbio(sbi, page, blk_addr, &fio, NULL);
+#else
 		f2fs_submit_page_mbio(sbi, page, blk_addr, &fio);
+#endif
 		f2fs_put_page(page, 0);
 	}
 out:

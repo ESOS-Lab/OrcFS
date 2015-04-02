@@ -537,6 +537,8 @@ int get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode)
 			if (IS_ERR(npage[i])) {
 				err = PTR_ERR(npage[i]);
 				f2fs_put_page(npage[0], 0);
+//TEMP
+				printk("[get_dnode] here 5 i=%d\n", i);
 				goto release_out;
 			}
 		}
@@ -987,6 +989,8 @@ static int read_node_page(struct page *page, int rw)
 
 	if (PageUptodate(page))
 		return LOCKED_PAGE;
+//TEMP
+//	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
 
 	return f2fs_submit_page_bio(sbi, page, ni.blk_addr, rw);
 }
@@ -1021,6 +1025,10 @@ struct page *get_node_page(struct f2fs_sb_info *sbi, pgoff_t nid)
 {
 	struct page *page;
 	int err;
+
+//TEMP
+	struct f2fs_node *rn;
+
 repeat:
 	page = grab_cache_page(NODE_MAPPING(sbi), nid);
 	if (!page)
@@ -1034,6 +1042,11 @@ repeat:
 
 	lock_page(page);
 	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
+//TEMP
+		printk("[get_node] here 3. %d %lu %d %p\n", PageUptodate(page), nid, nid_of_node(page), page);
+		rn = F2FS_NODE(page);
+		printk("[get_node] here 3-1. %d %d %d\n", rn->footer.ino, rn->footer.cp_ver, rn->footer.next_blkaddr);
+
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
@@ -1289,6 +1302,7 @@ static int f2fs_write_node_page(struct page *page,
 
 	/* get old block addr of this node page */
 	nid = nid_of_node(page);
+
 	f2fs_bug_on(sbi, page->index != nid);
 
 	get_node_info(sbi, nid, &ni);
@@ -1302,7 +1316,6 @@ static int f2fs_write_node_page(struct page *page,
 
 	if (wbc->for_reclaim)
 		goto redirty_out;
-
 	down_read(&sbi->node_write);
 	set_page_writeback(page);
 	write_node_page(sbi, page, &fio, nid, ni.blk_addr, &new_addr);
@@ -1737,7 +1750,11 @@ static int ra_sum_pages(struct f2fs_sb_info *sbi, struct page **pages,
 		pages[i] = grab_cache_page(mapping, page_idx);
 		if (!pages[i])
 			break;
+#ifdef F2FS_DA_MAP
+		f2fs_submit_page_mbio(sbi, pages[i], page_idx, &fio, NULL);
+#else
 		f2fs_submit_page_mbio(sbi, pages[i], page_idx, &fio);
+#endif
 	}
 
 	f2fs_submit_merged_bio(sbi, META, READ);
