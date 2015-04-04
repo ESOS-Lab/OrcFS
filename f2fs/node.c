@@ -538,7 +538,9 @@ int get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode)
 				err = PTR_ERR(npage[i]);
 				f2fs_put_page(npage[0], 0);
 //TEMP
+#ifdef F2FS_DA_MAP_DBG
 				printk("[get_dnode] here 5 i=%d\n", i);
+#endif
 				goto release_out;
 			}
 		}
@@ -987,10 +989,13 @@ static int read_node_page(struct page *page, int rw)
 		return -ENOENT;
 	}
 
+//TEMP
+#ifdef F2FS_DA_MAP_DBG
+	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
+#endif
+
 	if (PageUptodate(page))
 		return LOCKED_PAGE;
-//TEMP
-//	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
 
 	return f2fs_submit_page_bio(sbi, page, ni.blk_addr, rw);
 }
@@ -1026,11 +1031,21 @@ struct page *get_node_page(struct f2fs_sb_info *sbi, pgoff_t nid)
 	struct page *page;
 	int err;
 
+#ifdef F2FS_DA_MAP
+	pgoff_t temp_nid = nid;
+#endif
+
 //TEMP
 	struct f2fs_node *rn;
 
 repeat:
+
+#ifdef F2FS_DA_MAP
+	page = grab_cache_page(NODE_MAPPING(sbi), temp_nid);
+#else
 	page = grab_cache_page(NODE_MAPPING(sbi), nid);
+#endif
+
 	if (!page)
 		return ERR_PTR(-ENOMEM);
 
@@ -1041,11 +1056,26 @@ repeat:
 		goto got_it;
 
 	lock_page(page);
+
+#ifdef F2FS_DA_MAP
+	if(nid_of_node(page) == -1){
+
+#ifdef F2FS_DA_MAP_DBG
+		printk("[get_node] nid_of_page is -1, goto repeat [nid: %d]\n", temp_nid);
+#endif
+		temp_nid++;
+		f2fs_put_page(page, 1);
+		goto repeat;
+	}
+#endif
+
 	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
 //TEMP
+#ifdef F2FS_DA_MAP_DBG
 		printk("[get_node] here 3. %d %lu %d %p\n", PageUptodate(page), nid, nid_of_node(page), page);
 		rn = F2FS_NODE(page);
 		printk("[get_node] here 3-1. %d %d %d\n", rn->footer.ino, rn->footer.cp_ver, rn->footer.next_blkaddr);
+#endif
 
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);

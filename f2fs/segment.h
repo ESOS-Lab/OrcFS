@@ -13,6 +13,7 @@
 /* Define for Disaggregate Mapping - Jinsoo, 150119*/
 #define F2FS_DA_MAP
 #define F2FS_GET_FS_WAF
+//#define F2FS_DA_MAP_DBG
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>

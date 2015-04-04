@@ -148,10 +148,16 @@ static struct curseg_info *da_get_curseg_i(struct f2fs_bio_info *io, int* type)
 	block_t	next_blkaddr;
 	block_t last_block_in_bio = io->last_block_in_bio;
 
+#ifdef F2FS_DA_MAP_DBG
+	printk("    [JS DBG] da_get_curseg_i, blkaddr: %d\n", last_block_in_bio);
+#endif
 	for(i = 0; i< NR_CURSEG_TYPE; i++){
 		temp_curseg = CURSEG_I(sbi, i);
 		next_blkaddr = NEXT_FREE_BLKADDR(sbi, temp_curseg);
 
+#ifdef F2FS_DA_MAP_DBG
+	printk("    [JS DBG] da_get_curseg_i, next: blkaddr[i] %d\n",i, next_blkaddr);
+#endif
 		if(last_block_in_bio == next_blkaddr - 1){
 			*type = i;
 			return temp_curseg;
@@ -221,6 +227,7 @@ repeat:
 	SetPageUptodate(new_page);
 
 //TEMP_0326
+/*
 	if(io->fio.type == NODE){
 		dec_page_count(sbi, F2FS_DIRTY_NODES);
 		nid = nid_of_node(last_page);
@@ -236,7 +243,7 @@ repeat:
 		get_node_info(sbi, dn.nid, &ni);
 		set_summary(&sum, dn.nid, dn.ofs_in_node, ni.version);
 	}
-
+*/
 	unlock_page(new_page);
 
 	/* Add dummy page to the bio structe */
@@ -263,16 +270,27 @@ repeat:
 
 	new_blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
 
+#ifdef F2FS_DA_MAP_DBG
+	printk("    [JS DBG] add dummy to blkaddr %d\n", new_blkaddr);
+#endif
+
 //TEMP
+#ifdef F2FS_DA_MAP_DBG
 	if(io->last_block_in_bio != new_blkaddr -1){
 		printk("[JS DBG] add dummy fail, last: %d, dummy: %d, type: %d\n", io->last_block_in_bio, new_blkaddr, type);
 	}
+#endif
 
 //TEMP
-	__add_sum_entry(sbi, type, &sum);
+//	__add_sum_entry(sbi, type, &sum);
 
 	/* Lock sit_i mutext */
 	mutex_lock(&sit_i->sentry_lock);
+
+//TEMP
+#ifdef F2FS_DA_MAP_DBG
+	printk("here?\n");
+#endif
 
 	/* Move next block offset */
 	__refresh_next_blkoff(sbi, curseg);
@@ -296,9 +314,19 @@ repeat:
 	if (new_page && IS_NODESEG(type)){
 //TEMP
 	        rn = F2FS_NODE(last_page);
-		printk("[JS DBG] %d == %d of %p ???\n", new_blkaddr, rn->footer.next_blkaddr, last_page);
 		if((rn != NULL) && (new_blkaddr == rn->footer.next_blkaddr))
 			fill_node_footer_blkaddr(last_page, NEXT_FREE_BLKADDR(sbi, curseg));
+
+		rn = F2FS_NODE(new_page);
+#ifdef F2FS_DA_MAP_DBG
+		printk("  [JS DBG] add dummy page, rn: %p \n", rn);
+#endif
+
+		rn->footer.nid = -1;
+/*
+		if((rn != NULL) && (new_blkaddr == rn->footer.next_blkaddr))
+			fill_node_footer_blkaddr(last_page, NEXT_FREE_BLKADDR(sbi, curseg));
+*/
 	}
 
 	/* Unlock curseg mutex */
@@ -331,6 +359,11 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	if (!io->bio)
 		return;
 
+#ifdef F2FS_GET_FS_WAF
+	if(!is_read_io(fio->rw)){
+		len_fs_write += io->bio->bi_iter.bi_size;
+	}
+#endif
 	rw = fio->rw;
 
 	if (is_read_io(rw)) {
@@ -364,11 +397,6 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 		}
 	}
 
-#ifdef F2FS_GET_FS_WAF
-	if(!is_read_io(fio->rw)){
-		len_fs_write += io->bio->bi_iter.bi_size;
-	}
-#endif
 	io->bio = NULL;
 }
 
@@ -458,7 +486,7 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 	else if (io->bio && (io->fio.rw != fio->rw)){
 
 		/* Check if the bio need dummy page write */
-		need_dummy_page = f2fs_need_dummy_page(io);
+//		need_dummy_page = f2fs_need_dummy_page(io);
 
 		/* Submit the bio */
 		__submit_merged_bio(io);
@@ -470,8 +498,13 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 #endif
 alloc_new:
 #ifdef F2FS_DA_MAP
-	if(dio != NULL && (!bio_was_full))
+	if((dio != NULL) && (!bio_was_full) && !is_read){
 		allocate_data_block(sbi, page, dio->old_blkaddr, &blk_addr, dio->sum, dio->type);
+		dio->old_blkaddr = blk_addr;
+#ifdef F2FS_DA_MAP_DBG
+		printk("    [JS DBG] f2fs_submit_page_mbio, new blkadd: %d\n", blk_addr);
+#endif
+	}
 #endif
 	if (io->bio == NULL) {
 		int bio_blocks = MAX_BIO_BLOCKS(sbi);
@@ -548,7 +581,9 @@ int f2fs_reserve_block(struct dnode_of_data *dn, pgoff_t index)
 	err = get_dnode_of_data(dn, index, ALLOC_NODE);
 	if (err){
 //TEMP
+#ifdef F2FS_DA_MAP_DBG
 		printk("[f2fs reserve] here 1\n");
+#endif
 		return err;
 	}
 
@@ -1280,7 +1315,9 @@ repeat:
 	if (err) {
 		f2fs_put_page(page, 0);
 //TEMP
+#ifdef F2FS_DA_MAP_DBG
 		printk("[fwb] here 3.\n");
+#endif
 		goto fail;
 	}
 inline_data:
@@ -1339,7 +1376,9 @@ out:
 	return 0;
 fail:
 //TEMP
+#ifdef F2FS_DA_MAP_DBG
 	printk("[f2fs_write_begin] fail\n");
+#endif
 	f2fs_write_failed(mapping, pos + len);
 	return err;
 }
