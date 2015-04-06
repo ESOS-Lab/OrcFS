@@ -10,17 +10,11 @@
  */
 #include <linux/blkdev.h>
 
-/* Define for Disaggregate Mapping - Jinsoo, 150119*/
-#define F2FS_DA_MAP
 #define F2FS_GET_FS_WAF
-//#define F2FS_DA_MAP_DBG
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
 #endif
-
-#define NAND_PAGE_SIZE		8192
-#define N_PAGE_ALIGN	((NAND_PAGE_SIZE)/(PAGE_SIZE))
 
 /* constant macro */
 #define NULL_SEGNO			((unsigned int)(~0))
@@ -513,9 +507,6 @@ enum {
 	F2FS_IPU_UTIL,
 	F2FS_IPU_SSR_UTIL,
 	F2FS_IPU_FSYNC,
-#ifdef F2FS_DA_MAP
-	F2FS_IPU_DISABLE,
-#endif
 };
 
 static inline bool need_inplace_update(struct inode *inode)
@@ -526,10 +517,7 @@ static inline bool need_inplace_update(struct inode *inode)
 	/* IPU can be done only for the user data */
 	if (S_ISDIR(inode->i_mode) || f2fs_is_atomic_file(inode))
 		return false;
-#ifdef F2FS_DA_MAP
-	if (policy & (0x1 << F2FS_IPU_DISABLE))
-		return false;
-#endif
+
 	if (policy & (0x1 << F2FS_IPU_FORCE))
 		return true;
 	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
@@ -766,20 +754,8 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 	return desired - nr_to_write;
 }
 
-#ifdef F2FS_DA_MAP
-void __add_sum_entry(struct f2fs_sb_info *sbi, int type, struct f2fs_summary *sum);
-int __get_segment_type(struct page *page, enum page_type p_type);
-void __refresh_next_blkoff(struct f2fs_sb_info *sbi,
-                                struct curseg_info *seg);
-bool __has_curseg_space(struct f2fs_sb_info *sbi, int type);
-void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del);
-void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno);
-void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
-#endif
-
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
 extern unsigned long long gc_valid_blocks;
-extern unsigned long long dummy_page_count;
 #endif

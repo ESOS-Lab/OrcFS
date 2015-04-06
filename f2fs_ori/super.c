@@ -577,14 +577,13 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 #ifdef F2FS_GET_FS_WAF
 static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
-	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\n", len_user_data, len_fs_write, gc_valid_blocks, dummy_page_count);
+	seq_printf(seq,"%llu\t%llu\t%llu\n", len_user_data, len_fs_write, gc_valid_blocks);
 
-	len_user_data = 0;
-	len_fs_write = 0;
+        len_user_data = 0;
+        len_fs_write = 0;
 	gc_valid_blocks = 0;
-	dummy_page_count = 0;
 
-	return 0;
+        return 0;
 }
 #endif
 
@@ -1179,7 +1178,7 @@ free_kobj:
 free_proc:
 	if (sbi->s_proc) {
 #ifdef F2FS_GET_FS_WAF
-		remove_proc_entry("waf_info", sbi->s_proc);
+                remove_proc_entry("waf_info", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);

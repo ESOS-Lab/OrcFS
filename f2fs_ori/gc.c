@@ -489,13 +489,8 @@ block_t start_bidx_of_node(unsigned int node_ofs, struct f2fs_inode_info *fi)
 	return bidx * ADDRS_PER_BLOCK + ADDRS_PER_INODE(fi);
 }
 
-#ifdef F2FS_DA_MAP
-int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
-		struct node_info *dni, block_t blkaddr, unsigned int *nofs)
-#else
 static int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 		struct node_info *dni, block_t blkaddr, unsigned int *nofs)
-#endif
 {
 	struct page *node_page;
 	nid_t nid;
@@ -674,7 +669,7 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 	blk_start_plug(&plug);
 
 #ifdef F2FS_GET_FS_WAF
-	gc_valid_blocks += get_valid_blocks(sbi, segno, 1);
+        gc_valid_blocks += get_valid_blocks(sbi, segno, 1);
 #endif
 
 	sum = page_address(sum_page);
