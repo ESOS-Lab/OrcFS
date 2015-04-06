@@ -125,6 +125,9 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 	last_block_offset = last_block_in_bio % 4096;
 	start_block_in_bio = last_block_in_bio - n_blocks + 1;
 
+// TEMP_Get submit bio block number
+//	printk("%d\t%d\n", (start_block_in_bio * 8 + 195313664), n_blocks * 8);
+
 	/* If the block address is in Main area of F2FS
 	 * and the number of IO pages is odd, 
 	 * dummy page is needed. */
@@ -308,11 +311,6 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	if (!io->bio)
 		return;
 
-#ifdef F2FS_GET_FS_WAF
-	if(!is_read_io(fio->rw)){
-		len_fs_write += io->bio->bi_iter.bi_size;
-	}
-#endif
 	rw = fio->rw;
 
 	if (is_read_io(rw)) {
@@ -345,6 +343,12 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 			submit_bio(rw, io->bio);
 		}
 	}
+
+#ifdef F2FS_GET_FS_WAF
+	if(!is_read_io(fio->rw)){
+		len_fs_write += io->bio->bi_vcnt * 4096;
+	}
+#endif
 
 	io->bio = NULL;
 }
@@ -394,8 +398,8 @@ int f2fs_submit_page_bio(struct f2fs_sb_info *sbi, struct page *page,
 
 #ifdef F2FS_GET_FS_WAF
         if(!is_read_io(rw)){
-                len_fs_write += bio->bi_iter.bi_size;
-        }
+                len_fs_write += bio->bi_vcnt * 4096;
+	}
 #endif
 
 	submit_bio(rw, bio);
@@ -415,7 +419,6 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 	bool is_read = is_read_io(fio->rw);
 
 #ifdef F2FS_DA_MAP
-	bool need_dummy_page = false;
 	bool bio_was_full = false;
 #endif
 

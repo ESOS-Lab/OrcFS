@@ -287,6 +287,12 @@ repeat:
 		bio->bi_bdev = sbi->sb->s_bdev;
 		ret = submit_bio_wait(WRITE_FLUSH, bio);
 
+#ifdef F2FS_GET_FS_WAF
+//		if(bio->bi_rw & REQ_WRITE){
+			len_fs_write += bio->bi_vcnt * 4096;
+//		}
+#endif
+
 		llist_for_each_entry_safe(cmd, next,
 					  fcc->dispatch_list, llnode) {
 			cmd->ret = ret;
