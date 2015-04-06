@@ -537,10 +537,6 @@ int get_dnode_of_data(struct dnode_of_data *dn, pgoff_t index, int mode)
 			if (IS_ERR(npage[i])) {
 				err = PTR_ERR(npage[i]);
 				f2fs_put_page(npage[0], 0);
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-				printk("[get_dnode] here 5 i=%d\n", i);
-#endif
 				goto release_out;
 			}
 		}
@@ -989,7 +985,6 @@ static int read_node_page(struct page *page, int rw)
 		return -ENOENT;
 	}
 
-//TEMP
 #ifdef F2FS_DA_MAP_DBG
 	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
 #endif
@@ -1034,9 +1029,9 @@ struct page *get_node_page(struct f2fs_sb_info *sbi, pgoff_t nid)
 #ifdef F2FS_DA_MAP
 	pgoff_t temp_nid = nid;
 #endif
-
-//TEMP
+#ifdef F2FS_DA_MAP_DBG
 	struct f2fs_node *rn;
+#endif
 
 repeat:
 
@@ -1070,7 +1065,7 @@ repeat:
 #endif
 
 	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
-//TEMP
+
 #ifdef F2FS_DA_MAP_DBG
 		printk("[get_node] here 3. %d %lu %d %p\n", PageUptodate(page), nid, nid_of_node(page), page);
 		rn = F2FS_NODE(page);

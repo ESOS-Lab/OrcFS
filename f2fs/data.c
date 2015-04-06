@@ -183,14 +183,6 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	struct curseg_info *curseg;
 	struct f2fs_sb_info *sbi;
 
-//TEMP_0326
-	nid_t nid;
-	struct f2fs_summary sum;
-	struct node_info ni;
-	struct dnode_of_data dn;
-	int err = 0;
-
-//TEMP_0329
         struct f2fs_node *rn;
 
 	struct page *last_page;
@@ -222,28 +214,9 @@ repeat:
 
 	set_page_writeback(new_page);
 	inc_page_count(sbi, F2FS_WRITEBACK);
-//TEMP
 //	set_page_dirty(new_page);
 	SetPageUptodate(new_page);
 
-//TEMP_0326
-/*
-	if(io->fio.type == NODE){
-		dec_page_count(sbi, F2FS_DIRTY_NODES);
-		nid = nid_of_node(last_page);
-		set_summary(&sum, nid, 0, 0);
-	}
-
-	else if(io->fio.type == DATA){
-		set_new_dnode(&dn, mapping->host, NULL, NULL, 0);
-		err = get_dnode_of_data(&dn, last_page->index, LOOKUP_NODE);
-	        if (err)
-        	        return;
-
-		get_node_info(sbi, dn.nid, &ni);
-		set_summary(&sum, dn.nid, dn.ofs_in_node, ni.version);
-	}
-*/
 	unlock_page(new_page);
 
 	/* Add dummy page to the bio structe */
@@ -274,23 +247,8 @@ repeat:
 	printk("    [JS DBG] add dummy to blkaddr %d\n", new_blkaddr);
 #endif
 
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-	if(io->last_block_in_bio != new_blkaddr -1){
-		printk("[JS DBG] add dummy fail, last: %d, dummy: %d, type: %d\n", io->last_block_in_bio, new_blkaddr, type);
-	}
-#endif
-
-//TEMP
-//	__add_sum_entry(sbi, type, &sum);
-
 	/* Lock sit_i mutext */
 	mutex_lock(&sit_i->sentry_lock);
-
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-	printk("here?\n");
-#endif
 
 	/* Move next block offset */
 	__refresh_next_blkoff(sbi, curseg);
@@ -310,23 +268,14 @@ repeat:
 	/* Unlock sit_i mutex */
 	mutex_unlock(&sit_i->sentry_lock);
 
-	/* What is this? */
+	/* Update footer of NODE PAGE */
 	if (new_page && IS_NODESEG(type)){
-//TEMP
 	        rn = F2FS_NODE(last_page);
 		if((rn != NULL) && (new_blkaddr == rn->footer.next_blkaddr))
 			fill_node_footer_blkaddr(last_page, NEXT_FREE_BLKADDR(sbi, curseg));
 
 		rn = F2FS_NODE(new_page);
-#ifdef F2FS_DA_MAP_DBG
-		printk("  [JS DBG] add dummy page, rn: %p \n", rn);
-#endif
-
 		rn->footer.nid = -1;
-/*
-		if((rn != NULL) && (new_blkaddr == rn->footer.next_blkaddr))
-			fill_node_footer_blkaddr(last_page, NEXT_FREE_BLKADDR(sbi, curseg));
-*/
 	}
 
 	/* Unlock curseg mutex */
@@ -485,9 +434,6 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 	}
 	else if (io->bio && (io->fio.rw != fio->rw)){
 
-		/* Check if the bio need dummy page write */
-//		need_dummy_page = f2fs_need_dummy_page(io);
-
 		/* Submit the bio */
 		__submit_merged_bio(io);
 	}
@@ -579,13 +525,8 @@ int f2fs_reserve_block(struct dnode_of_data *dn, pgoff_t index)
 	f2fs_bug_on(F2FS_I_SB(dn->inode), !need_put && index);
 
 	err = get_dnode_of_data(dn, index, ALLOC_NODE);
-	if (err){
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-		printk("[f2fs reserve] here 1\n");
-#endif
+	if (err)
 		return err;
-	}
 
 	if (dn->data_blkaddr == NULL_ADDR)
 		err = reserve_new_block(dn);
@@ -1314,10 +1255,6 @@ repeat:
 
 	if (err) {
 		f2fs_put_page(page, 0);
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-		printk("[fwb] here 3.\n");
-#endif
 		goto fail;
 	}
 inline_data:
@@ -1375,10 +1312,6 @@ out:
 	clear_cold_data(page);
 	return 0;
 fail:
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-	printk("[f2fs_write_begin] fail\n");
-#endif
 	f2fs_write_failed(mapping, pos + len);
 	return err;
 }

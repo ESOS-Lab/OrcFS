@@ -713,11 +713,8 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 		if (f2fs_set_bit(offset, se->cur_valid_map))
 			f2fs_bug_on(sbi, 1);
 	} else {
-//TEMP
-		if (!f2fs_clear_bit(offset, se->cur_valid_map)){
-			printk("[JS DBG] update_sit_entry, %d %d %p\n", offset, blkaddr, se->cur_valid_map);
+		if (!f2fs_clear_bit(offset, se->cur_valid_map))
 			f2fs_bug_on(sbi, 1);
-		}
 	}
 	if (!f2fs_test_bit(offset, se->ckpt_valid_map))
 		se->ckpt_valid_blocks += del;
@@ -734,11 +731,6 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 
 void refresh_sit_entry(struct f2fs_sb_info *sbi, block_t old, block_t new)
 {
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-	printk("    [JS DBG] refresh_sit_entry, old: %d, new: %d\n", old, new);
-#endif
-
 	update_sit_entry(sbi, new, 1);
 	if (GET_SEGNO(sbi, old) != NULL_SEGNO)
 		update_sit_entry(sbi, old, -1);
@@ -1320,7 +1312,7 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 	struct f2fs_summary sum;
 	set_summary(&sum, nid, 0, 0);
 	do_write_page(sbi, page, old_blkaddr, new_blkaddr, &sum, fio);
-//TEMP
+
 #ifdef F2FS_DA_MAP_DBG
 	printk("[JS DBG] Write node: nid: %d, page: %p, block: %d\n", nid, page, *new_blkaddr);
 #endif
