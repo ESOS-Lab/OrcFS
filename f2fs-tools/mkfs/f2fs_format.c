@@ -21,6 +21,8 @@
 #include "f2fs_fs.h"
 #include "f2fs_format_utils.h"
 
+#define F2FS_DA_MAP
+
 extern struct f2fs_configuration config;
 struct f2fs_super_block sb;
 struct f2fs_checkpoint *cp;
@@ -487,6 +489,10 @@ static int f2fs_write_check_point_pack(void)
 //	set_cp(cur_data_blkoff[0], 1);
 	set_cp(cur_node_blkoff[0], 2);
 	set_cp(cur_data_blkoff[0], 2);
+	/*
+	 * 2015. 4. 7 added
+	 */
+	set_cp(cur_node_blkoff[1], 2);
 /*}*/
 	set_cp(valid_block_count, 2);
 	set_cp(rsvd_segment_count, config.reserved_segments);
