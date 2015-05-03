@@ -49,6 +49,15 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 	struct bio_vec *bvec;
 	int i;
 
+#ifdef F2FS_DA_MAP
+	struct page* dummy_page = NULL;
+	bool is_dummy_bio = false;
+//	if(bio->bi_max_vecs % 2 != 0){
+	if(unlikely(bio->bi_max_vecs == BIO_MAX_W_DUMMY)){
+		is_dummy_bio = true;
+	}
+#endif
+
 	bio_for_each_segment_all(bvec, bio, i) {
 		struct page *page = bvec->bv_page;
 
@@ -59,7 +68,20 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 		}
 		end_page_writeback(page);
 		dec_page_count(sbi, F2FS_WRITEBACK);
+
+#ifdef F2FS_DA_MAP
+		/* Get the last page */
+		dummy_page = page;
+#endif
 	}
+
+#ifdef F2FS_DA_MAP
+	/* If the bio has dummy page, release it  */
+	if(is_dummy_bio){
+		bio->bi_max_vecs--;
+		page_cache_release(dummy_page);
+	}
+#endif
 
 	if (sbi->wait_io) {
 		complete(sbi->wait_io);
@@ -217,8 +239,6 @@ repeat:
 
 	set_page_writeback(new_page);
 	inc_page_count(sbi, F2FS_WRITEBACK);
-//	set_page_dirty(new_page);
-	SetPageUptodate(new_page);
 
 	unlock_page(new_page);
 
@@ -229,6 +249,9 @@ repeat:
 		return;
 	}
 	bio_add_page(p_bio, new_page, PAGE_CACHE_SIZE, 0);
+
+	/* Marking as dummy bio */
+	p_bio->bi_max_vecs++;
 
 	/* Update CURSEG_I */
 	sit_i = SIT_I(sbi);
@@ -308,6 +331,15 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 #ifdef F2FS_DA_MAP
 	bool need_dummy_page = false;
 #endif
+#ifdef F2FS_GET_FS_WORKLOAD
+	int last_block_in_bio;
+	int n_blocks;
+	int start_block_in_bio;
+	int type = -1;
+	struct curseg_info *curseg;	
+	curseg = da_get_curseg_i(io, &type);
+#endif
+
 	if (!io->bio)
 		return;
 
@@ -343,6 +375,17 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 			submit_bio(rw, io->bio);
 		}
 	}
+
+#ifdef F2FS_GET_FS_WORKLOAD
+	/* Get the number of IO pages */
+	n_blocks = io->bio->bi_vcnt;
+
+	/* Calculate start block address */
+	last_block_in_bio = io->last_block_in_bio;
+	start_block_in_bio = last_block_in_bio - n_blocks + 1;
+
+	printk("%d\t%d\t%d\n", start_block_in_bio, n_blocks, type);
+#endif
 
 #ifdef F2FS_GET_FS_WAF
 	if(!is_read_io(fio->rw)){

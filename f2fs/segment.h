@@ -14,6 +14,9 @@
 #define F2FS_DA_MAP
 #define F2FS_GET_FS_WAF
 //#define F2FS_DA_MAP_DBG
+#define F2FS_GET_VALID_BLOCKS_INFO
+//#define F2FS_GET_FS_WORKLOAD
+#define BIO_MAX_W_DUMMY	129
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
