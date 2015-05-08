@@ -917,9 +917,15 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 
 	trace_f2fs_writepages(mapping->host, wbc, DATA);
 
+//TEMP
+	printk("[JS DBG] pid %d - start function\n", current->pid);
+
 	/* deal with chardevs and other special file */
-	if (!mapping->a_ops->writepage)
+	if (!mapping->a_ops->writepage){
+//TEMP
+		printk("[JS DBG] pid %d return 0\n", current->pid);
 		return 0;
+	}
 
 	if (S_ISDIR(inode->i_mode) && wbc->sync_mode == WB_SYNC_NONE &&
 			get_dirty_pages(inode) < nr_pages_to_skip(sbi, DATA) &&
@@ -927,16 +933,34 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 		goto skip_write;
 
 	diff = nr_pages_to_write(sbi, DATA, wbc);
+//TEMP
+	printk("\t[JS DBG] pid %d - nr_pages_to_write: %ld\n",current->pid, diff);
 
 	if (!S_ISDIR(inode->i_mode)) {
+//TEMP
+		printk("\t[JS DBG] pid %d - Attempt to get lock....", current->pid);
 		mutex_lock(&sbi->writepages);
+//TEMP
+		printk("Get lock!\n");
 		locked = true;
 	}
+//TEMP
+	printk("\t\t[JS DBG] pid %d - Before wcp [lock:%d], mapping: %p\n", current->pid, locked, mapping);
 	ret = write_cache_pages(mapping, wbc, __f2fs_writepage, mapping);
+//TEMP
+	printk("\t\t[JS DBG] pid %d - After wcp [lock:%d]\n", current->pid, locked);
 
-	if(locked || sbi->writepages.owner == current)
+	if(locked || sbi->writepages.owner == current){
 //	if (locked){
+//	if (&sbi->writepages.owner != NULL){
+//TEMP
+		printk("\t[JS DBG] pid %d - Release lock!\n", current->pid);
 		mutex_unlock(&sbi->writepages);
+	}
+//TEMP
+	else{
+		printk("\t[JS DBG] pid %d - Already released\n", current->pid);
+	}
 
 	f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
@@ -944,10 +968,16 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
 
+//TEMP
+	printk("[JS DBG] pid %d - return: %d\n", current->pid, ret);
+
 	return ret;
 
 skip_write:
 	wbc->pages_skipped += get_dirty_pages(inode);
+
+//TEMP
+	printk("[JS DBG] pid %d - skip write\n", current->pid);
 
 	return 0;
 }
