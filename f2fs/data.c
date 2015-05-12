@@ -181,7 +181,7 @@ static struct curseg_info *da_get_curseg_i(struct f2fs_bio_info *io, int* type)
 		next_blkaddr = NEXT_FREE_BLKADDR(sbi, temp_curseg);
 
 #ifdef F2FS_DA_MAP_DBG
-	printk("    [JS DBG] da_get_curseg_i, next: blkaddr[i] %d\n",i, next_blkaddr);
+	printk("    [JS DBG] da_get_curseg_i, next: blkaddr[%d] %d\n",i, next_blkaddr);
 #endif
 		if(last_block_in_bio == next_blkaddr - 1){
 			*type = i;
@@ -474,20 +474,10 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 	if (!is_read)
 		inc_page_count(sbi, F2FS_WRITEBACK);
 
-#ifdef F2FS_DA_MAP
-	if (io->bio && (io->last_block_in_bio != blk_addr - 1)){
-		__submit_merged_bio(io);
-	}
-	else if (io->bio && (io->fio.rw != fio->rw)){
-
-		/* Submit the bio */
-		__submit_merged_bio(io);
-	}
-#else
 	if (io->bio && (io->last_block_in_bio != blk_addr - 1 ||
 						io->fio.rw != fio->rw))
 		__submit_merged_bio(io);
-#endif
+
 alloc_new:
 #ifdef F2FS_DA_MAP
 	if((dio != NULL) && (!bio_was_full) && !is_read){
@@ -1209,7 +1199,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 {
 	struct inode *inode = mapping->host;
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	bool locked = false;
+//	bool locked = false;
 	int ret;
 	long diff;
 
@@ -1226,20 +1216,25 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 
 	diff = nr_pages_to_write(sbi, DATA, wbc);
 
+/*
 	if (!S_ISDIR(inode->i_mode)) {
 		mutex_lock(&sbi->writepages);
 		locked = true;
 	}
+*/
 	ret = write_cache_pages(mapping, wbc, __f2fs_writepage, mapping);
+
+/*
 	if (locked)
+	if (sbi->writepages.owner != current)
 		mutex_unlock(&sbi->writepages);
+*/
 
 	f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
 	remove_dirty_dir_inode(inode);
 
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
-
 	return ret;
 
 skip_write:

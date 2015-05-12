@@ -109,5 +109,5 @@ static inline int is_idle(struct f2fs_sb_info *sbi)
 	return !(rl->count[BLK_RW_SYNC]) && !(rl->count[BLK_RW_ASYNC]);
 }
 
-int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
-                struct node_info *dni, block_t blkaddr, unsigned int *nofs);
+//int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
+  //              struct node_info *dni, block_t blkaddr, unsigned int *nofs);

@@ -687,6 +687,7 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 		gc_data_segment(sbi, sum->entries, ilist, segno, gc_type);
 		break;
 	}
+
 	blk_finish_plug(&plug);
 
 	stat_inc_seg_count(sbi, GET_SUM_TYPE((&sum->footer)));

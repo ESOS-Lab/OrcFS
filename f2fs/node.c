@@ -986,7 +986,7 @@ static int read_node_page(struct page *page, int rw)
 	}
 
 #ifdef F2FS_DA_MAP_DBG
-	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
+//	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
 #endif
 
 	if (PageUptodate(page))
@@ -1056,7 +1056,7 @@ repeat:
 	if(nid_of_node(page) == -1){
 
 #ifdef F2FS_DA_MAP_DBG
-		printk("[get_node] nid_of_page is -1, goto repeat [nid: %d]\n", temp_nid);
+		printk("[get_node] nid_of_page is -1, goto repeat [nid: %lu]\n", temp_nid);
 #endif
 		temp_nid++;
 		f2fs_put_page(page, 1);

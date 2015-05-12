@@ -23,6 +23,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x964b601a, __VMLINUX_SYMBOL_STR(kobject_put) },
 	{ 0x413c01e4, __VMLINUX_SYMBOL_STR(blkdev_issue_discard) },
 	{ 0xd5d786e, __VMLINUX_SYMBOL_STR(kset_create_and_add) },
+	{ 0xd856350d, __VMLINUX_SYMBOL_STR(alloc_pages_current) },
 	{ 0xa9df11dd, __VMLINUX_SYMBOL_STR(kmem_cache_destroy) },
 	{ 0x8dfd488a, __VMLINUX_SYMBOL_STR(fs_bio_set) },
 	{ 0xd99a8d9d, __VMLINUX_SYMBOL_STR(iget_failed) },
@@ -203,6 +204,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x98d2a973, __VMLINUX_SYMBOL_STR(kmem_cache_create) },
 	{ 0xb6b8cfa3, __VMLINUX_SYMBOL_STR(d_tmpfile) },
 	{ 0x3e5daf36, __VMLINUX_SYMBOL_STR(register_filesystem) },
+	{ 0x4302d0eb, __VMLINUX_SYMBOL_STR(free_pages) },
 	{ 0x88db5201, __VMLINUX_SYMBOL_STR(generic_file_write_iter) },
 	{ 0x8860253a, __VMLINUX_SYMBOL_STR(event_triggers_call) },
 	{ 0xcf21d241, __VMLINUX_SYMBOL_STR(__wake_up) },
@@ -275,4 +277,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "E353B68ADC2720DD49FD6AB");
+MODULE_INFO(srcversion, "82F0C7BF2DF0789AB2B1816");

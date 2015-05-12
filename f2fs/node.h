@@ -204,6 +204,7 @@ static inline void fill_node_footer(struct page *page, nid_t nid,
 	struct f2fs_node *rn = F2FS_NODE(page);
 	if (reset)
 		memset(rn, 0, sizeof(*rn));
+
 	rn->footer.nid = cpu_to_le32(nid);
 	rn->footer.ino = cpu_to_le32(ino);
 	rn->footer.flag = cpu_to_le32(ofs << OFFSET_BIT_SHIFT);
