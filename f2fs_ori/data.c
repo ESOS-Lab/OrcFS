@@ -911,7 +911,8 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 {
 	struct inode *inode = mapping->host;
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	bool locked = false;
+// TEMP
+//	bool locked = false;
 	int ret;
 	long diff;
 
@@ -928,16 +929,20 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 
 	diff = nr_pages_to_write(sbi, DATA, wbc);
 
+/* TEMP
 	if (!S_ISDIR(inode->i_mode)) {
 		mutex_lock(&sbi->writepages);
 		locked = true;
 	}
+*/
 	ret = write_cache_pages(mapping, wbc, __f2fs_writepage, mapping);
 
+/* TEMP
+	if(sbi->writepages.owner == current)
 	if(locked || sbi->writepages.owner == current)
-//	if (locked){
+	if (locked){
 		mutex_unlock(&sbi->writepages);
-
+*/
 	f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
 	remove_dirty_dir_inode(inode);
