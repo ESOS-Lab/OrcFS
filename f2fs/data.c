@@ -384,7 +384,7 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	last_block_in_bio = io->last_block_in_bio;
 	start_block_in_bio = last_block_in_bio - n_blocks + 1;
 
-	printk("%d\t%d\t%d\n", start_block_in_bio, n_blocks, type);
+	printk("N\t%d\t%d\t%d\n", start_block_in_bio, n_blocks, type);
 #endif
 
 #ifdef F2FS_GET_FS_WAF
@@ -473,6 +473,18 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 
 	if (!is_read)
 		inc_page_count(sbi, F2FS_WRITEBACK);
+
+//TEMP
+	if (dio != NULL){
+		if(IS_NODESEG(dio->type) && 
+				!is_read && 
+				(io->last_block_in_bio == blk_addr - 1) &&
+				(io->fio.rw == WRITE_SYNC) &&
+				(io->fio.rw != fio->rw)){
+
+			io->fio.rw = fio->rw;
+		}
+	}
 
 	if (io->bio && (io->last_block_in_bio != blk_addr - 1 ||
 						io->fio.rw != fio->rw))

@@ -774,7 +774,9 @@ static int block_operations(struct f2fs_sb_info *sbi)
 	int err = 0;
 
 	blk_start_plug(&plug);
-
+#ifdef F2FS_GET_FS_WORKLOAD
+	printk("Plug!\n");
+#endif
 retry_flush_dents:
 	f2fs_lock_all(sbi);
 	/* write all the dirty dentry pages */
@@ -787,6 +789,10 @@ retry_flush_dents:
 		}
 		goto retry_flush_dents;
 	}
+
+#ifdef F2FS_GET_FS_WORKLOAD
+        printk("And!\n");
+#endif
 
 	/*
 	 * POR: we should ensure that there are no dirty node pages
@@ -806,7 +812,9 @@ retry_flush_nodes:
 		goto retry_flush_nodes;
 	}
 out:
-
+#ifdef F2FS_GET_FS_WORKLOAD
+        printk("Un Plug!\n");
+#endif
 	blk_finish_plug(&plug);
 	return err;
 }
