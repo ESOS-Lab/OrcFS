@@ -58,7 +58,7 @@ preOccupy()
 	toWrite=`echo $TotalSize*95/100 | bc`
 	mobibench -p ${MNT}/gc_test -f $toWrite -r 512 -a 0 -y 0 
 
-	sync
+#	sync
 
 	case ${FileSystem} in 
 	f2fs)
@@ -70,7 +70,7 @@ preOccupy()
 		cat /proc/fs/ext4/${DEVP}/mb_groups  > $STATNAME ;;
 	esac
 
-	sleep 10
+#	sleep 10
 
 }
 
@@ -78,11 +78,11 @@ preOccupy()
 gc()
 {
 	echo "     run test"
-	NRUNS=1 ;
+	NRUNS=100 ;
 
 	STARTIME=$(date  +%s)
 	echo "Start Iteration..."
-	sync
+#	sync
 #	read -n 1 $input1
 
 	for i in `seq 1 $NRUNS` 
@@ -114,14 +114,15 @@ gc()
 _mkfs()
 {
 	echo " make file system: $FileSystem on $DEV"
-	sync
+#	sync
 	umount ${MNT} 
 
 	case $FileSystem in 
 		f2fs) 
 #		      mkfs -t f2fs -l f2fs -t 0 $DEV 
 #		      mkfs -t f2fs -l f2fs -t 0 $DEV 4194304	# 2GByte
-		      mkfs -t f2fs -l f2fs -t 0 $DEV 41943040	# 20GByte
+#		      mkfs -t f2fs -l f2fs -t 0 $DEV 41943040	# 20GByte
+		      mkfs.f2fs -s 128 -t 0 $DEV 41943040	# 20GByte
 		      echo " mkfs f2fs successful" ;; 
 		ext4)
 #		      mkfs -t ext4 -L ext4 -E nodiscard -E lazy_itable_init=0 -E lazy_journal_init=0 $DEV
@@ -138,7 +139,7 @@ _mountFS()
 	echo 3 > /proc/sys/vm/drop_caches
 
 	case $FileSystem in 
-		f2fs) mount -t $FileSystem $DEV $MNT 
+		f2fs) mount -t $FileSystem -o background_gc=off $DEV $MNT 
 			echo "  mount f2fs successful" ;;
 		ext4) mount -t $FileSystem -o nodiscard $DEV $MNT
 			echo "  mount ext4 successful" ;;
@@ -173,7 +174,7 @@ runTest()
 		SEGNAME=./result/${FileSystem}/04a_seg_gc.txt
 		WAFNAME=./result/${FileSystem}/04_waf_gc.txt
 		VALIDBLOCKSNAME=./result/${FileSystem}/04_valid_blocks_gc.txt
-		gc
+#		gc
 		echo "$FileSystem Ended"
 	done
 }

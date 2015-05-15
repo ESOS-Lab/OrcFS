@@ -80,7 +80,7 @@ gc()
 		50) NRUNS=1000 ;;
 		*)  NRUNS=2000 ;;
 	esac
-	NRUNS=5 ;
+	NRUNS=1 ;
 
 	echo "#>mobibench -p ${MNT}/gc_test -f $toWrite -r 4 -a 1 -y 0" > $RESULT
 	echo "#itrtn  Bandwidth in MB" > $BWONLY
@@ -98,7 +98,7 @@ gc()
 
 	for i in `seq 1 $NRUNS` 
 	do
-		mobibench -p ${MNT}/gc_test -f $toWrite -r 4 -a 0 -y 0 >> $RESULT
+		mobibench -p ${MNT}/gc_test -f $toWrite -r 4 -a 1 -y 0 >> $RESULT
 
 		ENDTIME=$(date +%s)	
 		echo ${i} $(( $ENDTIME - $STARTIME )) >> RUNTIME_${FileSystem}_${util}
@@ -134,7 +134,8 @@ _mkfs()
 	case $FileSystem in 
 		f2fs) 
 #		      mkfs -t f2fs -l f2fs -t 0 $DEV 209715200	# 100GByte
-                      mkfs -t f2fs -l f2fs -t 0 $DEV 4194304	# 2GByte 
+#                      mkfs -t f2fs -l f2fs -t 0 $DEV 4194304	# 2GByte 
+                      mkfs -t f2fs -l f2fs -t 0 $DEV 41943040	# 2GByte 
 		      echo " mkfs f2fs successful" ;; 
 		ext4)
 		      mkfs -t ext4 -L ext4 -E nodiscard -E lazy_itable_init=0 -E lazy_journal_init=0 $DEV

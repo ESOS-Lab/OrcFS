@@ -54,11 +54,11 @@ preOccupy()
 {
 	echo ""
 	echo "    preoccupy the device"
-	WRITTEN=`echo $TotalSize*85/100 | bc`
+	WRITTEN=`echo $TotalSize*75/100 | bc`
 	mobibench -p ${MNT}/preWrtn -f $WRITTEN -r 512 -a 0 -y 0 # prewritten
 
 #	toWrite=`echo 10485760 | bc`
-	toWrite=`echo $TotalSize*12/100 | bc`
+	toWrite=`echo $TotalSize*22/100 | bc`
 	mobibench -p ${MNT}/gc_test -f $toWrite -r 512 -a 0 -y 0 
 
 	sync
@@ -85,7 +85,7 @@ gc()
 		50) NRUNS=1000 ;;
 		*)  NRUNS=2000 ;;
 	esac
-	NRUNS=5 ;
+	NRUNS=10 ;
 
 	echo "#>mobibench -p ${MNT}/gc_test -f $toWrite -r 4 -a 0 -y 0" > $RESULT
 	echo "#itrtn  Bandwidth in MB" > $BWONLY
@@ -99,11 +99,11 @@ gc()
 	echo "#GCitr TIME $STARTTIME in secodns" > RUNTIME_${FileSystem}_${util}
 	
 	echo "Start Iteration..."
-#	read -n 1 $input1
+	read -n 1 $input1
 
 	for i in `seq 1 $NRUNS` 
 	do
-		mobibench -p ${MNT}/gc_test -f $toWrite -r 4 -a 0 -y 0 >> $RESULT
+		mobibench -p ${MNT}/gc_test -f $toWrite -r 4 -a 1 -y 0 >> $RESULT
 
 		ENDTIME=$(date +%s)	
 		echo ${i} $(( $ENDTIME - $STARTIME )) >> RUNTIME_${FileSystem}_${util}
@@ -118,7 +118,7 @@ gc()
 			cat /proc/fs/ext4/${DEVP}/mb_groups  > ${STATNAME%.txt}_${i}.txt ;;
 		esac
 
-#		read -n 1 $input2
+		read -n 1 $input2
 
 	done
 
@@ -139,7 +139,7 @@ _mkfs()
 	case $FileSystem in 
 		f2fs) 
 #		      mkfs -t f2fs -l f2fs -t 0 $DEV 
-		      mkfs -t f2fs -l f2fs -t 0 $DEV 4194304	# 2GByte
+		      mkfs -t f2fs -l f2fs -t 0 $DEV 4194304	# 20GByte
 		      echo " mkfs f2fs successful" ;; 
 		ext4)
 		      mkfs -t ext4 -L ext4 -E nodiscard -E lazy_itable_init=0 -E lazy_journal_init=0 $DEV
