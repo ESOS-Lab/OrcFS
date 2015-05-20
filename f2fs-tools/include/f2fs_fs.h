@@ -20,6 +20,8 @@
 #include <config.h>
 #endif
 
+#define F2FS_DA_MAP
+
 typedef u_int64_t	u64;
 typedef u_int32_t	u32;
 typedef u_int16_t	u16;
@@ -512,7 +514,7 @@ struct f2fs_node {
 	struct node_footer footer;
 } __attribute__((packed));
 
-/*[@@]{*/
+#ifdef F2FS_DA_MAP
 struct f2fs_node_with_dummy {
 	union {
 		struct f2fs_inode i;
@@ -523,7 +525,7 @@ struct f2fs_node_with_dummy {
 	// 꼬리에 똑같은 사이즈의 dummy를 붙임.
 	struct f2fs_node dummy;
 } __attribute__((packed));
-/*}*/
+#endif
 
 /*
  * For NAT entries
@@ -721,7 +723,7 @@ struct f2fs_dentry_block {
 	__u8 filename[NR_DENTRY_IN_BLOCK][F2FS_SLOT_LEN];
 } __attribute__((packed));
 
-/*[@@] {*/
+#ifdef F2FS_DA_MAP
 struct f2fs_dentry_block_with_dummy {
 	__u8 dentry_bitmap[SIZE_OF_DENTRY_BITMAP];
 	__u8 reserved[SIZE_OF_RESERVED];
@@ -730,7 +732,7 @@ struct f2fs_dentry_block_with_dummy {
 	// 똑같은 사이즈의 f2fs_dentry_block 타입의 더미 추가
 	struct f2fs_dentry_block dummy;
 } __attribute__((packed));
-/*}*/
+#endif
 
 /* for inline dir */
 #define NR_INLINE_DENTRY	(MAX_INLINE_DATA * BITS_PER_BYTE / \
