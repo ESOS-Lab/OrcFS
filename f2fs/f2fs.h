@@ -1335,6 +1335,7 @@ void get_next_data_block(struct f2fs_sb_info *sbi, block_t *new_blkaddr, int typ
 
 void allocate_data_block(struct f2fs_sb_info *, struct page *,
 		block_t, block_t *, struct f2fs_summary *, int);
+
 void f2fs_wait_on_page_writeback(struct page *, enum page_type);
 void write_data_summaries(struct f2fs_sb_info *, block_t);
 void write_node_summaries(struct f2fs_sb_info *, block_t);

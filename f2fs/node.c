@@ -1316,9 +1316,10 @@ static int f2fs_write_node_page(struct page *page,
 		.rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE,
 	};
 
-//TEMP
-	printk("write node page! %d %llu %llu\n", fio.rw, WRITE_SYNC, WRITE);
-
+#ifdef F2FS_DA_MAP
+	if(F2FS_PLUG_ON == true)
+		fio.rw = WRITE_SYNC;
+#endif
 
 	trace_f2fs_writepage(page, NODE);
 
@@ -1375,6 +1376,7 @@ static int f2fs_write_node_pages(struct address_space *mapping,
 		goto skip_write;
 
 	diff = nr_pages_to_write(sbi, NODE, wbc);
+
 	wbc->sync_mode = WB_SYNC_NONE;
 
 	sync_node_pages(sbi, 0, wbc);

@@ -15,8 +15,9 @@
 #define F2FS_GET_FS_WAF
 //#define F2FS_DA_MAP_DBG
 #define F2FS_GET_VALID_BLOCKS_INFO
-#define F2FS_GET_FS_WORKLOAD
+//#define F2FS_GET_FS_WORKLOAD
 #define BIO_MAX_W_DUMMY	129
+
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
@@ -770,6 +771,8 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 }
 
 #ifdef F2FS_DA_MAP
+extern bool F2FS_PLUG_ON;
+
 void __add_sum_entry(struct f2fs_sb_info *sbi, int type, struct f2fs_summary *sum);
 int __get_segment_type(struct page *page, enum page_type p_type);
 void __refresh_next_blkoff(struct f2fs_sb_info *sbi,

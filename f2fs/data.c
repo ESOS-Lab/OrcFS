@@ -147,9 +147,6 @@ static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
 	last_block_offset = last_block_in_bio % 4096;
 	start_block_in_bio = last_block_in_bio - n_blocks + 1;
 
-// TEMP_Get submit bio block number
-//	printk("%d\t%d\n", (start_block_in_bio * 8 + 195313664), n_blocks * 8);
-
 	/* If the block address is in Main area of F2FS
 	 * and the number of IO pages is odd, 
 	 * dummy page is needed. */
@@ -384,7 +381,7 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 	last_block_in_bio = io->last_block_in_bio;
 	start_block_in_bio = last_block_in_bio - n_blocks + 1;
 
-	printk("N\t%d\t%d\t%d\n", start_block_in_bio, n_blocks, type);
+	printk("N\t%d\t%d\t%d\t%d\n", start_block_in_bio, n_blocks, type, current->pid);
 #endif
 
 #ifdef F2FS_GET_FS_WAF
@@ -464,7 +461,6 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 #ifdef F2FS_DA_MAP
 	bool bio_was_full = false;
 #endif
-
 	io = is_read ? &sbi->read_io : &sbi->write_io[btype];
 
 	verify_block_addr(sbi, blk_addr);
@@ -474,21 +470,23 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 	if (!is_read)
 		inc_page_count(sbi, F2FS_WRITEBACK);
 
-//TEMP
-	if (dio != NULL){
-		if(IS_NODESEG(dio->type) && 
-				!is_read && 
-				(io->last_block_in_bio == blk_addr - 1) &&
-				(io->fio.rw == WRITE_SYNC) &&
-				(io->fio.rw != fio->rw)){
+#ifdef F2FS_DA_MAP
+	if (dio != NULL && (F2FS_PLUG_ON == true)){
+                if(IS_NODESEG(dio->type) && 
+                                !is_read && 
+                                (io->last_block_in_bio == blk_addr - 1) &&
+                                (fio->rw == WRITE_SYNC) &&
+                                (io->fio.rw != fio->rw)){
 
-			io->fio.rw = fio->rw;
-		}
-	}
+                        io->fio.rw = fio->rw;
+                }
+        }
+#endif
 
 	if (io->bio && (io->last_block_in_bio != blk_addr - 1 ||
-						io->fio.rw != fio->rw))
+						io->fio.rw != fio->rw)){
 		__submit_merged_bio(io);
+	}
 
 alloc_new:
 #ifdef F2FS_DA_MAP
@@ -496,10 +494,11 @@ alloc_new:
 		allocate_data_block(sbi, page, dio->old_blkaddr, &blk_addr, dio->sum, dio->type);
 		dio->old_blkaddr = blk_addr;
 #ifdef F2FS_DA_MAP_DBG
-		printk("    [JS DBG] f2fs_submit_page_mbio, new blkadd: %d\n", blk_addr);
+		printk("    [JS DBG] f2fs_submit_page_mbio, new blkaddr: %d\n", blk_addr);
 #endif
 	}
 #endif
+
 	if (io->bio == NULL) {
 		int bio_blocks = MAX_BIO_BLOCKS(sbi);
 

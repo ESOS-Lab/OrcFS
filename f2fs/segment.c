@@ -34,6 +34,7 @@ static struct kmem_cache *inmem_entry_slab;
 
 #ifdef F2FS_DA_MAP
 unsigned int gc_block_offset = 0;
+bool F2FS_PLUG_ON = false;
 #endif
 
 #ifdef F2FS_GET_FS_WAF
@@ -1042,6 +1043,7 @@ static void change_curseg(struct f2fs_sb_info *sbi, int type, bool reuse)
 	}
 }
 
+#ifndef F2FS_DA_MAP
 static int get_ssr_segment(struct f2fs_sb_info *sbi, int type)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
@@ -1058,6 +1060,7 @@ static int get_ssr_segment(struct f2fs_sb_info *sbi, int type)
 			return 1;
 	return 0;
 }
+#endif
 
 /*
  * flush out current segment and replace it with new segment
@@ -1279,6 +1282,13 @@ static void do_write_page(struct f2fs_sb_info *sbi, struct page *page,
 	int type = __get_segment_type(page, fio->type);
 
 #ifdef F2FS_DA_MAP
+	struct mutex do_w_mutex;
+	mutex_init(&do_w_mutex);
+
+	/* Acquire do_w_mutex lock  */
+	mutex_lock(&do_w_mutex);
+
+	/* Just check the next block address */
 	get_next_data_block(sbi, new_blkaddr, type);
 
 	dio.old_blkaddr = old_blkaddr;
@@ -1288,6 +1298,9 @@ static void do_write_page(struct f2fs_sb_info *sbi, struct page *page,
 	/* writeout dirty page into bdev */
 	f2fs_submit_page_mbio(sbi, page, *new_blkaddr, fio, &dio);
 	*new_blkaddr = dio.old_blkaddr;
+
+	/* Release do_w_mutex lock */
+	mutex_unlock(&do_w_mutex);
 #else
 	allocate_data_block(sbi, page, old_blkaddr, new_blkaddr, sum, type);
 
