@@ -56,6 +56,7 @@ getTestFileSize()
 	ToWriteSize_1K=`echo $TotalSize_1K*90/100 | bc`
 }
 
+
 main()
 {
 	umount ${MNT}
@@ -68,6 +69,7 @@ main()
 # Run Test
 	run_FIO_Test
 }
+
 
 case $1 in
         run)
