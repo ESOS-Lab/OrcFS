@@ -7,7 +7,7 @@ MNT="/home/jedisty/f2fs_mnt"
 #FILESYSTEM="f2fs_ori"
 #FILESYSTEM="f2fs_da"
 #FILESYSTEM="ext4"
-NRUNS=10
+NRUNS=5
 FIRMDIR="../../../firmware"
 
 downloadFirmware()
@@ -46,7 +46,7 @@ _mkfs()
 {
 	case $FILESYSTEM in
 		f2fs_ori)
-			mkfs -t f2fs -s 64 $DEV
+			mkfs -t f2fs -s 128 $DEV
 			echo "mkfs f2fs"
 			;;
 		f2fs_da)
@@ -95,7 +95,7 @@ runCompGcTest()
         echo "Start Compound GC Test - Make Test Files..."
 
 #	./program  path  file_size_1k  record_size_1k  random_ratio(%)  test_mode
-	./comp_gc_test2	$MNT $ToWriteSize_1K 4 30 0
+	./comp_gc_test2	$MNT $ToWriteSize_1K 4 20 0
 #	./comp_gc_test2	$MNT 128 4 50 0
 
 	STATDIR=${OUTPUTDIR}/${FILESYSTEM}
@@ -132,7 +132,7 @@ runCompGcTest()
 #		read -n 1 $input1
 
 #		./program  path  file_size_1k  record_size_1k  random_ratio(%)  test_mode
-		./comp_gc_test2 $MNT $ToWriteSize_1K 4 30 1 >> ${STATDIR}/iops
+		./comp_gc_test2 $MNT $ToWriteSize_1K 4 20 1 >> ${STATDIR}/iops
 #		./comp_gc_test2 $MNT 128 4 50 1 >> ${STATDIR}/iops
 
 #		Get SSD WAF Information
@@ -165,7 +165,7 @@ main()
 {
 	mkdir ${OUTPUTDIR}
 
-	for FILESYSTEM in f2fs_ori f2fs_da ext4
+	for FILESYSTEM in f2fs_ori f2fs_da
 	do
 	        echo "Start Intilization for $FILESYSTEM"
 
