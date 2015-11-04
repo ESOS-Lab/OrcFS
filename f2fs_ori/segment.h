@@ -11,6 +11,7 @@
 #include <linux/blkdev.h>
 
 #define F2FS_GET_FS_WAF
+#define F2FS_GET_VALID_BLOCKS_INFO
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
