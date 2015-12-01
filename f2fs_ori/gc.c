@@ -104,6 +104,14 @@ int start_gc_thread(struct f2fs_sb_info *sbi)
 		goto out;
 	}
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+	block_copy = kmalloc(sizeof(unsigned int)*4096, GFP_KERNEL);
+	if(!block_copy){
+		err = -ENOMEM;
+		goto out;
+	}
+#endif
+
 	gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
 	gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
 	gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
@@ -669,16 +677,21 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 	blk_start_plug(&plug);
 
 #ifdef F2FS_GET_FS_WAF
-        gc_valid_blocks += get_valid_blocks(sbi, segno, 1);
+        gc_valid_blocks_total += get_valid_blocks(sbi, segno, 1);
 #endif
-
 	sum = page_address(sum_page);
 
 	switch (GET_SUM_TYPE((&sum->footer))) {
 	case SUM_TYPE_NODE:
+	#ifdef F2FS_GET_FS_WAF
+	        gc_valid_blocks_node += get_valid_blocks(sbi, segno, 1);
+	#endif
 		gc_node_segment(sbi, sum->entries, segno, gc_type);
 		break;
 	case SUM_TYPE_DATA:
+	#ifdef F2FS_GET_FS_WAF
+	        gc_valid_blocks_data += get_valid_blocks(sbi, segno, 1);
+	#endif
 		gc_data_segment(sbi, sum->entries, ilist, segno, gc_type);
 		break;
 	}
@@ -722,6 +735,12 @@ gc_more:
 		ra_meta_pages(sbi, GET_SUM_BLOCK(sbi, segno), sbi->segs_per_sec,
 								META_SSA);
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+	if(block_copy_index < 4096){
+		block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
+		block_copy_index++;
+	}
+#endif
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);
 

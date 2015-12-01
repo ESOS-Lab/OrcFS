@@ -12,6 +12,7 @@
 
 #define F2FS_GET_FS_WAF
 #define F2FS_GET_VALID_BLOCKS_INFO
+#define F2FS_GET_BLOCK_COPY_INFO
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
@@ -521,8 +522,9 @@ static inline bool need_inplace_update(struct inode *inode)
 
 	if (policy & (0x1 << F2FS_IPU_FORCE))
 		return true;
-	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
-		return true;
+//TEMP
+//	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
+//		return true;
 	if (policy & (0x1 << F2FS_IPU_UTIL) &&
 			utilization(sbi) > SM_I(sbi)->min_ipu_util)
 		return true;
@@ -758,5 +760,12 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
-extern unsigned long long gc_valid_blocks;
+extern unsigned long long gc_valid_blocks_total;
+extern unsigned long long gc_valid_blocks_node;
+extern unsigned long long gc_valid_blocks_data;
+#endif
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+extern unsigned int* block_copy;
+extern unsigned int block_copy_index;
 #endif

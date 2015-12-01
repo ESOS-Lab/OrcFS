@@ -433,6 +433,9 @@ static void f2fs_put_super(struct super_block *sb)
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
                 remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+                remove_proc_entry("block_copy_info2", sbi->s_proc);
+#endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
 	}
@@ -580,11 +583,17 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 #ifdef F2FS_GET_FS_WAF
 static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
-	seq_printf(seq,"%llu\t%llu\t%llu\n", len_user_data, len_fs_write, gc_valid_blocks);
+	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\n", len_user_data, 
+							len_fs_write, 
+							gc_valid_blocks_total, 
+							gc_valid_blocks_node, 
+							gc_valid_blocks_data);
 
         len_user_data = 0;
         len_fs_write = 0;
-	gc_valid_blocks = 0;
+	gc_valid_blocks_total = 0;
+	gc_valid_blocks_node = 0;
+	gc_valid_blocks_data = 0;
 
         return 0;
 }
@@ -596,15 +605,80 @@ static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
         int i;
         struct super_block *sb = seq->private;
         struct f2fs_sb_info *sbi = F2FS_SB(sb);
+	struct free_segmap_info *free_i = FREE_I(sbi);
         unsigned int n_total_segs = le32_to_cpu(sbi->raw_super->segment_count_main);
         unsigned int valid_blocks = 0;
+	int section = sbi->segs_per_sec;
+	int type;
+	int allocated;
 
-        for(i = 0; i < n_total_segs ; i++){
-                valid_blocks = get_seg_entry(sbi, i)->valid_blocks;
-                seq_printf(seq, "%u\n", valid_blocks);
-        }
+	if(section > 1){
+	        for(i = 0; i < n_total_segs ; i+=section){
+			valid_blocks = get_valid_blocks(sbi, i, section);
+			type = get_seg_entry(sbi, i)->type;
+			if(test_bit(GET_SECNO(sbi, i), free_i->free_secmap)){
+				allocated = 1;
+			}
+			else{
+				allocated = 0;
+			}
+	                seq_printf(seq, "%d\t%d\t%d\t%u\n", GET_SECNO(sbi, i), type, allocated, valid_blocks);
+        	}
+	}
+	else{
+	        for(i = 0; i < n_total_segs ; i++){
+                	valid_blocks = get_seg_entry(sbi, i)->valid_blocks;
+			type = get_seg_entry(sbi, i)->type;
+			if(test_bit(i, free_i->free_segmap)){
+				allocated = 1;
+			}
+			else{
+				allocated = 0;
+			}
+	                seq_printf(seq, "%d\t%d\t%d\t%u\n", i, type, allocated, valid_blocks);
+        	}
+	}
 
         return 0;
+}
+#endif
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+static void backtrace(int count)
+{
+	int i, **rbp;
+
+	__asm__("mov %%rbp, %0":"=r"(rbp):);
+
+	printk("[BACKTRACE] Start\n");
+	for (i = 0; i<count; i++)
+	{
+		rbp = *rbp;
+		rbp += 1;
+		printk("[BACKTRACE] %d)\t%p\n", i, *rbp);
+	}
+	printk("[BACKTRACE] End\n");
+}
+static int block_copy_info2_seq_show(struct seq_file *seq, void *offset)
+{
+	int i;
+//	seq_printf(seq,"block_copy_index: %u\n", block_copy_index);
+
+	/*********************** [JT DBG] ****************************/
+	printk("[JT DBG] block_copy_info2_seq_show Start, %u\n", block_copy_index);
+//	backtrace(2);
+	/*********************** [JT DBG] ****************************/
+
+	for(i=0; i<block_copy_index; i++){
+		seq_printf(seq, "block_copy : %u\n", block_copy[i]);
+		block_copy[i] = 0;
+	}
+
+	block_copy_index = 0;
+
+	printk("[JT DBG] block_copy_info2_seq_show End\n");
+
+	return 0;
 }
 #endif
 
@@ -649,6 +723,13 @@ static int valid_blocks_info_open_fs(struct inode *inode, struct file *file)
 }
 #endif
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+static int block_copy_info2_open_fs(struct inode *inode, struct file *file)
+{
+        return single_open(file, block_copy_info2_seq_show, PDE_DATA(inode));
+}
+#endif
+
 static int segment_info_open_fs(struct inode *inode, struct file *file)
 {
 	return single_open(file, segment_info_seq_show, PDE_DATA(inode));
@@ -668,6 +749,16 @@ static const struct file_operations f2fs_waf_info_fops = {
 static const struct file_operations f2fs_valid_blocks_info_fops = {
         .owner = THIS_MODULE,
         .open = valid_blocks_info_open_fs,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release,
+};
+#endif
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+static const struct file_operations f2fs_block_copy_info2_fops = {
+        .owner = THIS_MODULE,
+        .open = block_copy_info2_open_fs,
         .read = seq_read,
         .llseek = seq_lseek,
         .release = single_release,
@@ -1168,6 +1259,11 @@ try_onemore:
                 proc_create_data("valid_blocks_info", S_IRUGO, sbi->s_proc,
                                  &f2fs_valid_blocks_info_fops, sb);
 #endif
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        if (sbi->s_proc)
+                proc_create_data("block_copy_info2", S_IRUGO, sbi->s_proc,
+                                 &f2fs_block_copy_info2_fops, sb);
+#endif
 	if (sbi->s_proc)
 		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
 				 &f2fs_seq_segment_info_fops, sb);
@@ -1221,6 +1317,9 @@ free_proc:
 #endif
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
                 remove_proc_entry("valid_blocks_info", sbi->s_proc);
+#endif
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+                remove_proc_entry("block_copy_info2", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);

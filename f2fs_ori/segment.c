@@ -31,7 +31,14 @@ static struct kmem_cache *inmem_entry_slab;
 #ifdef F2FS_GET_FS_WAF
 unsigned long long len_user_data = 0;
 unsigned long long len_fs_write = 0;
-unsigned long long gc_valid_blocks = 0;
+unsigned long long gc_valid_blocks_total = 0;
+unsigned long long gc_valid_blocks_node = 0;
+unsigned long long gc_valid_blocks_data = 0;
+#endif
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+unsigned int* block_copy = NULL;
+unsigned int block_copy_index = 0;
 #endif
 
 /*
@@ -979,8 +986,10 @@ static void allocate_segment_by_default(struct f2fs_sb_info *sbi,
 		new_curseg(sbi, type, false);
 	else if (curseg->alloc_type == LFS && is_next_segment_free(sbi, type))
 		new_curseg(sbi, type, false);
+/*
 	else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
 		change_curseg(sbi, type, true);
+*/
 	else
 		new_curseg(sbi, type, false);
 
