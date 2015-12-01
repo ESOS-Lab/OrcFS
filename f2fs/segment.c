@@ -40,7 +40,9 @@ bool F2FS_PLUG_ON = false;
 #ifdef F2FS_GET_FS_WAF
 unsigned long long len_user_data = 0;
 unsigned long long len_fs_write = 0;
-unsigned long long gc_valid_blocks = 0;
+unsigned long long gc_valid_blocks_total = 0;
+unsigned long long gc_valid_blocks_node = 0;
+unsigned long long gc_valid_blocks_data = 0;
 unsigned long long dummy_page_count = 0;
 #endif
 

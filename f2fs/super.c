@@ -580,11 +580,18 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 #ifdef F2FS_GET_FS_WAF
 static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
-	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\n", len_user_data, len_fs_write, gc_valid_blocks, dummy_page_count);
+	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", len_user_data,
+                                                        len_fs_write,
+                                                        gc_valid_blocks_total,
+                                                        gc_valid_blocks_node,
+                                                        gc_valid_blocks_data,
+							dummy_page_count);
 
-	len_user_data = 0;
-	len_fs_write = 0;
-	gc_valid_blocks = 0;
+        len_user_data = 0;
+        len_fs_write = 0;
+        gc_valid_blocks_total = 0;
+        gc_valid_blocks_node = 0;
+        gc_valid_blocks_data = 0;
 	dummy_page_count = 0;
 
 	return 0;
@@ -595,15 +602,42 @@ static int waf_info_seq_show(struct seq_file *seq, void *offset)
 static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
-	struct super_block *sb = seq->private;
+        struct super_block *sb = seq->private;
         struct f2fs_sb_info *sbi = F2FS_SB(sb);
-	unsigned int n_total_segs = le32_to_cpu(sbi->raw_super->segment_count_main);
-	unsigned int valid_blocks = 0;
+	struct free_segmap_info *free_i = FREE_I(sbi);
+        unsigned int n_total_segs = le32_to_cpu(sbi->raw_super->segment_count_main);
+        unsigned int valid_blocks = 0;
+        int section = sbi->segs_per_sec;
+	int type;
+	int allocated;
 
-	for(i = 0; i < n_total_segs ; i++){
-		valid_blocks = get_seg_entry(sbi, i)->valid_blocks;
-		seq_printf(seq, "%u\n", valid_blocks);
-	}
+        if(section > 1){
+                for(i = 0; i < n_total_segs ; i+=section){
+                        valid_blocks = get_valid_blocks(sbi, i, section);
+			type = get_seg_entry(sbi, i)->type;
+			if(test_bit(GET_SECNO(sbi, i), free_i->free_secmap)){
+                                allocated = 1;
+                        }
+                        else{
+                                allocated = 0;
+                        }
+                        seq_printf(seq, "%d\t%d\t%d\t%u\n", GET_SECNO(sbi, i), type, allocated, valid_blocks);
+
+                }
+        }
+        else{
+                for(i = 0; i < n_total_segs ; i++){
+                        valid_blocks = get_seg_entry(sbi, i)->valid_blocks;
+			type = get_seg_entry(sbi, i)->type;
+			if(test_bit(i, free_i->free_segmap)){
+                                allocated = 1;
+                        }
+                        else{
+                                allocated = 0;
+                        }
+                        seq_printf(seq, "%d\t%d\t%d\t%u\n", i, type, allocated, valid_blocks);
+                }
+        }
 
 	return 0;
 }

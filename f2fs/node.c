@@ -1029,6 +1029,7 @@ struct page *get_node_page(struct f2fs_sb_info *sbi, pgoff_t nid)
 #ifdef F2FS_DA_MAP
 	pgoff_t temp_nid = nid;
 #endif
+//TEMP
 #ifdef F2FS_DA_MAP_DBG
 	struct f2fs_node *rn;
 #endif
@@ -1055,9 +1056,9 @@ repeat:
 #ifdef F2FS_DA_MAP
 	if(nid_of_node(page) == -1){
 
-#ifdef F2FS_DA_MAP_DBG
+//	#ifdef F2FS_DA_MAP_DBG
 		printk("[get_node] nid_of_page is -1, goto repeat [nid: %lu]\n", temp_nid);
-#endif
+//	#endif
 		temp_nid++;
 		f2fs_put_page(page, 1);
 		goto repeat;
@@ -1065,7 +1066,7 @@ repeat:
 #endif
 
 	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
-
+//TEMP
 #ifdef F2FS_DA_MAP_DBG
 		printk("[get_node] here 3. %d %lu %d %p\n", PageUptodate(page), nid, nid_of_node(page), page);
 		rn = F2FS_NODE(page);

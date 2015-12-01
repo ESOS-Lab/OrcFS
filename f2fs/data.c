@@ -52,9 +52,9 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 #ifdef F2FS_DA_MAP
 	struct page* dummy_page = NULL;
 	bool is_dummy_bio = false;
-//	if(bio->bi_max_vecs % 2 != 0){
 	if(unlikely(bio->bi_max_vecs == BIO_MAX_W_DUMMY)){
 		is_dummy_bio = true;
+		bio->bi_max_vecs--;
 	}
 #endif
 
@@ -77,9 +77,11 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 
 #ifdef F2FS_DA_MAP
 	/* If the bio has dummy page, release it  */
-	if(is_dummy_bio){
-		bio->bi_max_vecs--;
-		page_cache_release(dummy_page);
+	if(unlikely(is_dummy_bio)){
+		if(dummy_page != NULL)
+			page_cache_release(dummy_page);
+		else
+			printk("ERROR[f2fs_write_end_io] dummy_page has NULL pointer.\n");
 	}
 #endif
 
@@ -206,6 +208,7 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	struct f2fs_sb_info *sbi;
 
         struct f2fs_node *rn;
+	struct f2fs_summary sum;
 
 	struct page *last_page;
 	block_t new_blkaddr;
@@ -269,6 +272,12 @@ repeat:
 #ifdef F2FS_DA_MAP_DBG
 	printk("    [JS DBG] add dummy to blkaddr %d\n", new_blkaddr);
 #endif
+
+	/* updates a summary entry in the current summary block */
+//	if(IS_NODESEG(type)){
+	set_summary(&sum, -1, 0, 0);
+	__add_sum_entry(sbi, type, &sum);
+//	}
 
 	/* Lock sit_i mutext */
 	mutex_lock(&sit_i->sentry_lock);
@@ -493,9 +502,9 @@ alloc_new:
 	if((dio != NULL) && (!bio_was_full) && !is_read){
 		allocate_data_block(sbi, page, dio->old_blkaddr, &blk_addr, dio->sum, dio->type);
 		dio->old_blkaddr = blk_addr;
-#ifdef F2FS_DA_MAP_DBG
+	#ifdef F2FS_DA_MAP_DBG
 		printk("    [JS DBG] f2fs_submit_page_mbio, new blkaddr: %d\n", blk_addr);
-#endif
+	#endif
 	}
 #endif
 

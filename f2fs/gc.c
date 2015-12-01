@@ -674,16 +674,22 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 	blk_start_plug(&plug);
 
 #ifdef F2FS_GET_FS_WAF
-	gc_valid_blocks += get_valid_blocks(sbi, segno, 1);
+	gc_valid_blocks_total += get_valid_blocks(sbi, segno, 1);
 #endif
 
 	sum = page_address(sum_page);
 
 	switch (GET_SUM_TYPE((&sum->footer))) {
 	case SUM_TYPE_NODE:
+	#ifdef F2FS_GET_FS_WAF
+                gc_valid_blocks_node += get_valid_blocks(sbi, segno, 1);
+        #endif
 		gc_node_segment(sbi, sum->entries, segno, gc_type);
 		break;
 	case SUM_TYPE_DATA:
+	#ifdef F2FS_GET_FS_WAF
+                gc_valid_blocks_data += get_valid_blocks(sbi, segno, 1);
+        #endif
 		gc_data_segment(sbi, sum->entries, ilist, segno, gc_type);
 		break;
 	}

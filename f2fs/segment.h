@@ -786,6 +786,8 @@ void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
-extern unsigned long long gc_valid_blocks;
+extern unsigned long long gc_valid_blocks_total;
+extern unsigned long long gc_valid_blocks_node;
+extern unsigned long long gc_valid_blocks_data;
 extern unsigned long long dummy_page_count;
 #endif
