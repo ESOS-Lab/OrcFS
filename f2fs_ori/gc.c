@@ -105,7 +105,7 @@ int start_gc_thread(struct f2fs_sb_info *sbi)
 	}
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-	block_copy = kmalloc(sizeof(unsigned int)*4096, GFP_KERNEL);
+	block_copy = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
 	if(!block_copy){
 		err = -ENOMEM;
 		goto out;
@@ -714,6 +714,10 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 		.reason = CP_SYNC,
 	};
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+	int j;
+#endif
+
 	INIT_LIST_HEAD(&ilist);
 gc_more:
 	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
@@ -736,7 +740,15 @@ gc_more:
 								META_SSA);
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-	if(block_copy_index < 4096){
+	if(block_copy_proc_is_called == true){
+		block_copy_index = 0;
+		for(j=0; j<max_block_copy_index; j++){
+			block_copy[j] = 0;
+		}
+		block_copy_proc_is_called = false;
+	}
+
+	if(block_copy_index < max_block_copy_index){
 		block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
 		block_copy_index++;
 	}

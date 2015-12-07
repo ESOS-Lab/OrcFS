@@ -768,4 +768,6 @@ extern unsigned long long gc_valid_blocks_data;
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 extern unsigned int* block_copy;
 extern unsigned int block_copy_index;
+extern unsigned int max_block_copy_index;
+extern bool block_copy_proc_is_called;
 #endif

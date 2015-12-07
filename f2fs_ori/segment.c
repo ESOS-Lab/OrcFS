@@ -39,6 +39,8 @@ unsigned long long gc_valid_blocks_data = 0;
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 unsigned int* block_copy = NULL;
 unsigned int block_copy_index = 0;
+unsigned int max_block_copy_index = 4096;
+bool block_copy_proc_is_called = false;
 #endif
 
 /*

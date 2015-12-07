@@ -180,7 +180,6 @@ __attribute__((section("__versions"))) = {
 	{ 0x3bd1b1f6, __VMLINUX_SYMBOL_STR(msecs_to_jiffies) },
 	{ 0xd62c833f, __VMLINUX_SYMBOL_STR(schedule_timeout) },
 	{ 0x1000e51, __VMLINUX_SYMBOL_STR(schedule) },
-	{ 0xa202a8e5, __VMLINUX_SYMBOL_STR(kmalloc_order_trace) },
 	{ 0x96b29254, __VMLINUX_SYMBOL_STR(strncasecmp) },
 	{ 0x251ad51f, __VMLINUX_SYMBOL_STR(unlock_new_inode) },
 	{ 0x948e5c09, __VMLINUX_SYMBOL_STR(mnt_want_write_file) },
@@ -275,4 +274,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "D316731AD3E6F74B5D47A42");
+MODULE_INFO(srcversion, "8C1E15C27B684C5DBDDA1AE");

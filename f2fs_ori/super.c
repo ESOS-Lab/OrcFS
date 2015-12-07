@@ -644,39 +644,16 @@ static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-static void backtrace(int count)
-{
-	int i, **rbp;
-
-	__asm__("mov %%rbp, %0":"=r"(rbp):);
-
-	printk("[BACKTRACE] Start\n");
-	for (i = 0; i<count; i++)
-	{
-		rbp = *rbp;
-		rbp += 1;
-		printk("[BACKTRACE] %d)\t%p\n", i, *rbp);
-	}
-	printk("[BACKTRACE] End\n");
-}
 static int block_copy_info2_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
-//	seq_printf(seq,"block_copy_index: %u\n", block_copy_index);
 
-	/*********************** [JT DBG] ****************************/
-	printk("[JT DBG] block_copy_info2_seq_show Start, %u\n", block_copy_index);
-//	backtrace(2);
-	/*********************** [JT DBG] ****************************/
-
+	seq_printf(seq, "block_copy_index : %u\n", block_copy_index);
 	for(i=0; i<block_copy_index; i++){
-		seq_printf(seq, "block_copy : %u\n", block_copy[i]);
-		block_copy[i] = 0;
+		seq_printf(seq, "%u\n", block_copy[i]);
 	}
 
-	block_copy_index = 0;
-
-	printk("[JT DBG] block_copy_info2_seq_show End\n");
+	block_copy_proc_is_called = true;
 
 	return 0;
 }
