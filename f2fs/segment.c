@@ -42,17 +42,33 @@ bool F2FS_PLUG_ON = false;
 #ifdef F2FS_GET_FS_WAF
 unsigned long long len_user_data = 0;
 unsigned long long len_fs_write = 0;
-unsigned long long gc_valid_blocks_total = 0;
-unsigned long long gc_valid_blocks_node = 0;
-unsigned long long gc_valid_blocks_data = 0;
+unsigned long long len_data_write = 0;
+unsigned long long len_node_write = 0;
+unsigned long long len_meta_write = 0;
 unsigned long long dummy_page_count = 0;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 unsigned int* block_copy = NULL;
+unsigned int* block_copy_free = NULL;
+unsigned int* block_copy_secno = NULL;
+unsigned int* block_copy_type = NULL;
+unsigned int* block_copy_node = NULL;
+long long* gc_latency = NULL;
+int* gc_type_info = NULL;
 unsigned int block_copy_index = 0;
 unsigned int max_block_copy_index = 4096;
+unsigned int len_node_sync = 0;
 bool block_copy_proc_is_called = false;
+#endif
+
+#ifdef F2FS_DA_MAP
+long long get_current_utime(void)
+{
+	struct timeval current_time;
+	do_gettimeofday(&current_time);
+	return (current_time.tv_sec*1000000 + current_time.tv_usec);
+}
 #endif
 
 /*
@@ -300,9 +316,9 @@ repeat:
 		ret = submit_bio_wait(WRITE_FLUSH, bio);
 
 #ifdef F2FS_GET_FS_WAF
-//		if(bio->bi_rw & REQ_WRITE){
+		if(bio->bi_rw & REQ_WRITE){
 			len_fs_write += bio->bi_vcnt * 4096;
-//		}
+		}
 #endif
 
 		llist_for_each_entry_safe(cmd, next,
@@ -1323,7 +1339,9 @@ void write_meta_page(struct f2fs_sb_info *sbi, struct page *page)
 		.type = META,
 		.rw = WRITE_SYNC | REQ_META | REQ_PRIO
 	};
-
+#ifdef F2FS_GET_FS_WAF
+        len_meta_write++;
+#endif
 	set_page_writeback(page);
 
 #ifdef F2FS_DA_MAP
@@ -1338,6 +1356,14 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 		unsigned int nid, block_t old_blkaddr, block_t *new_blkaddr)
 {
 	struct f2fs_summary sum;
+
+#ifdef F2FS_GET_FS_WAF
+        len_node_write++;
+#endif
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        len_node_sync++;
+#endif
+
 	set_summary(&sum, nid, 0, 0);
 	do_write_page(sbi, page, old_blkaddr, new_blkaddr, &sum, fio);
 
@@ -1352,6 +1378,10 @@ void write_data_page(struct page *page, struct dnode_of_data *dn,
 	struct f2fs_sb_info *sbi = F2FS_I_SB(dn->inode);
 	struct f2fs_summary sum;
 	struct node_info ni;
+
+#ifdef F2FS_GET_FS_WAF
+        len_data_write++;
+#endif
 
 	f2fs_bug_on(sbi, dn->data_blkaddr == NULL_ADDR);
 	get_node_info(sbi, dn->nid, &ni);
