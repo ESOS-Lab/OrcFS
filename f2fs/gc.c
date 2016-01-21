@@ -104,6 +104,14 @@ int start_gc_thread(struct f2fs_sb_info *sbi)
 		goto out;
 	}
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        block_copy = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        if(!block_copy){
+                err = -ENOMEM;
+                goto out;
+        }
+#endif
+
 	gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
 	gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
 	gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
@@ -713,6 +721,10 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 		.reason = CP_SYNC,
 	};
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        int j;
+#endif
+
 	INIT_LIST_HEAD(&ilist);
 gc_more:
 	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
@@ -733,6 +745,21 @@ gc_more:
 	if (sbi->segs_per_sec > 1)
 		ra_meta_pages(sbi, GET_SUM_BLOCK(sbi, segno), sbi->segs_per_sec,
 								META_SSA);
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        if(block_copy_proc_is_called == true){
+                block_copy_index = 0;
+                for(j=0; j<max_block_copy_index; j++){
+                        block_copy[j] = 0;
+                }
+                block_copy_proc_is_called = false;
+        }
+
+        if(block_copy_index < max_block_copy_index){
+                block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
+                block_copy_index++;
+        }
+#endif
 
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);

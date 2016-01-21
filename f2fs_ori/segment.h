@@ -10,6 +10,7 @@
  */
 #include <linux/blkdev.h>
 
+/* Get filesystem info from proc */
 #define F2FS_GET_FS_WAF
 #define F2FS_GET_VALID_BLOCKS_INFO
 #define F2FS_GET_BLOCK_COPY_INFO

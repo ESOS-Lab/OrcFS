@@ -434,7 +434,7 @@ static void f2fs_put_super(struct super_block *sb)
                 remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-                remove_proc_entry("block_copy_info2", sbi->s_proc);
+                remove_proc_entry("block_copy_info", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
@@ -648,7 +648,6 @@ static int block_copy_info2_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
 
-	seq_printf(seq, "block_copy_index : %u\n", block_copy_index);
 	for(i=0; i<block_copy_index; i++){
 		seq_printf(seq, "%u\n", block_copy[i]);
 	}
@@ -701,9 +700,9 @@ static int valid_blocks_info_open_fs(struct inode *inode, struct file *file)
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-static int block_copy_info2_open_fs(struct inode *inode, struct file *file)
+static int block_copy_info_open_fs(struct inode *inode, struct file *file)
 {
-        return single_open(file, block_copy_info2_seq_show, PDE_DATA(inode));
+        return single_open(file, block_copy_info_seq_show, PDE_DATA(inode));
 }
 #endif
 
@@ -733,9 +732,9 @@ static const struct file_operations f2fs_valid_blocks_info_fops = {
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-static const struct file_operations f2fs_block_copy_info2_fops = {
+static const struct file_operations f2fs_block_copy_info_fops = {
         .owner = THIS_MODULE,
-        .open = block_copy_info2_open_fs,
+        .open = block_copy_info_open_fs,
         .read = seq_read,
         .llseek = seq_lseek,
         .release = single_release,
@@ -1238,8 +1237,8 @@ try_onemore:
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         if (sbi->s_proc)
-                proc_create_data("block_copy_info2", S_IRUGO, sbi->s_proc,
-                                 &f2fs_block_copy_info2_fops, sb);
+                proc_create_data("block_copy_info", S_IRUGO, sbi->s_proc,
+                                 &f2fs_block_copy_info_fops, sb);
 #endif
 	if (sbi->s_proc)
 		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
@@ -1296,7 +1295,7 @@ free_proc:
                 remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-                remove_proc_entry("block_copy_info2", sbi->s_proc);
+                remove_proc_entry("block_copy_info", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);

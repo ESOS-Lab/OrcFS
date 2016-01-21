@@ -48,6 +48,13 @@ unsigned long long gc_valid_blocks_data = 0;
 unsigned long long dummy_page_count = 0;
 #endif
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+unsigned int* block_copy = NULL;
+unsigned int block_copy_index = 0;
+unsigned int max_block_copy_index = 4096;
+bool block_copy_proc_is_called = false;
+#endif
+
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
  * MSB and LSB are reversed in a byte by f2fs_set_bit.

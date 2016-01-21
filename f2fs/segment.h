@@ -12,9 +12,13 @@
 
 /* Define for Disaggregate Mapping - Jinsoo, 150119*/
 #define F2FS_DA_MAP
-#define F2FS_GET_FS_WAF
 //#define F2FS_DA_MAP_DBG
+
+/* Get filesystem info from proc */
+#define F2FS_GET_FS_WAF
 #define F2FS_GET_VALID_BLOCKS_INFO
+#define F2FS_GET_BLOCK_COPY_INFO
+
 //#define F2FS_GET_FS_WORKLOAD
 #define BIO_MAX_W_DUMMY	129
 
@@ -791,4 +795,11 @@ extern unsigned long long gc_valid_blocks_total;
 extern unsigned long long gc_valid_blocks_node;
 extern unsigned long long gc_valid_blocks_data;
 extern unsigned long long dummy_page_count;
+#endif
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+extern unsigned int* block_copy;
+extern unsigned int block_copy_index;
+extern unsigned int max_block_copy_index;
+extern bool block_copy_proc_is_called;
 #endif
