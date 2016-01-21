@@ -585,15 +585,15 @@ static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
 	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\n", len_user_data, 
 							len_fs_write, 
-							gc_valid_blocks_total, 
-							gc_valid_blocks_node, 
-							gc_valid_blocks_data);
+							len_data_write, 
+							len_node_write, 
+							len_meta_write);
 
         len_user_data = 0;
         len_fs_write = 0;
-	gc_valid_blocks_total = 0;
-	gc_valid_blocks_node = 0;
-	gc_valid_blocks_data = 0;
+	len_data_write = 0;
+	len_node_write = 0;
+	len_meta_write = 0;
 
         return 0;
 }
@@ -644,13 +644,14 @@ static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-static int block_copy_info2_seq_show(struct seq_file *seq, void *offset)
+static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
 
-	for(i=0; i<block_copy_index; i++){
-		seq_printf(seq, "%u\n", block_copy[i]);
-	}
+	seq_printf(seq, "n_blocks\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_latency\tgc_type\n");
+        for(i=0; i<block_copy_index; i++){
+                seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_latency[i], gc_type_info[i]);
+        }
 
 	block_copy_proc_is_called = true;
 

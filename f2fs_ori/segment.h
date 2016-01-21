@@ -761,14 +761,23 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
-extern unsigned long long gc_valid_blocks_total;
-extern unsigned long long gc_valid_blocks_node;
-extern unsigned long long gc_valid_blocks_data;
+extern unsigned long long len_data_write;
+extern unsigned long long len_node_write;
+extern unsigned long long len_meta_write;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
+long long get_current_utime(void);
+
 extern unsigned int* block_copy;
+extern unsigned int* block_copy_free;
+extern unsigned int* block_copy_secno;
+extern unsigned int* block_copy_type;
+extern unsigned int* block_copy_node;
+extern long long* gc_latency;
+extern int* gc_type_info;
 extern unsigned int block_copy_index;
 extern unsigned int max_block_copy_index;
+extern unsigned int len_node_sync;
 extern bool block_copy_proc_is_called;
 #endif
