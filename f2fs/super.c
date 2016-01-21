@@ -1213,6 +1213,20 @@ try_onemore:
 
 	build_gc_manager(sbi);
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        block_copy = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_free = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_secno = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_type = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_node = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        gc_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
+        gc_type_info = kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
+        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !block_copy_node || !gc_latency || !gc_type_info){
+                err = -ENOMEM;
+                goto free_nm;
+        }
+#endif
+
 	/* get an inode for node space */
 	sbi->node_inode = f2fs_iget(sb, F2FS_NODE_INO(sbi));
 	if (IS_ERR(sbi->node_inode)) {
