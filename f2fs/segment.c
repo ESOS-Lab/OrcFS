@@ -8,6 +8,22 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
+/*
+ * Unified Storage Layer
+ *
+ * Copyright(c)2015
+ * Hanyang University, Seoul, Korea
+ * Embedded Software Systems Laboratory. All right reserved
+ *
+ * File: fs/f2fs/segment.c
+ * Author:
+ *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
+ *   Joontaek Oh (na94jun@gmail.com)
+ *
+ * History
+ */
+
 #include <linux/fs.h>
 #include <linux/f2fs_fs.h>
 #include <linux/bio.h>
@@ -60,9 +76,7 @@ unsigned int block_copy_index = 0;
 unsigned int max_block_copy_index = 4096;
 unsigned int len_node_sync = 0;
 bool block_copy_proc_is_called = false;
-#endif
 
-#ifdef F2FS_DA_MAP
 long long get_current_utime(void)
 {
 	struct timeval current_time;

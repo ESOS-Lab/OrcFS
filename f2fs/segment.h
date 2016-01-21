@@ -8,6 +8,22 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
+/*
+ * Unified Storage Layer
+ *
+ * Copyright(c)2015
+ * Hanyang University, Seoul, Korea
+ * Embedded Software Systems Laboratory. All right reserved
+ *
+ * File: fs/f2fs/segment.h
+ * Author:
+ *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
+ *   Joontaek Oh (na94jun@gmail.com)
+ *
+ * History
+ */
+
 #include <linux/blkdev.h>
 
 /* Define for Disaggregate Mapping - Jinsoo, 150119*/
@@ -786,7 +802,6 @@ bool __has_curseg_space(struct f2fs_sb_info *sbi, int type);
 void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del);
 void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno);
 void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
-long long get_current_utime(void);
 #endif
 
 #ifdef F2FS_GET_FS_WAF
@@ -799,6 +814,8 @@ extern unsigned long long dummy_page_count;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
+long long get_current_utime(void);
+
 extern unsigned int* block_copy;
 extern unsigned int* block_copy_free;
 extern unsigned int* block_copy_secno;

@@ -8,6 +8,22 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
+/*
+ * Unified Storage Layer
+ *
+ * Copyright(c)2015
+ * Hanyang University, Seoul, Korea
+ * Embedded Software Systems Laboratory. All right reserved
+ *
+ * File: fs/f2fs/super.c
+ * Author:
+ *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
+ *   Joontaek Oh (na94jun@gmail.com)
+ *
+ * History
+ */
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/fs.h>

@@ -8,6 +8,23 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
+/*
+ * Unified Storage Layer
+ *
+ * Copyright(c)2015
+ * Hanyang University, Seoul, Korea
+ * Embedded Software Systems Laboratory. All right reserved
+ *
+ * File: fs/f2fs/gc.c
+ * Author:
+ *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
+ *   Joontaek Oh (na94jun@gmail.com)
+ *
+ * History
+ * Jun 21, 2016 Add GC latency measurement code by Jinsoo Yoo
+ */
+
 #include <linux/fs.h>
 #include <linux/module.h>
 #include <linux/backing-dev.h>
@@ -814,6 +831,7 @@ gc_more:
 		write_checkpoint(sbi, &cpc);
 stop:
 	mutex_unlock(&sbi->gc_mutex);
+	put_gc_inode(&ilist);
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 	gc_time_end = get_current_utime();
@@ -822,7 +840,6 @@ stop:
         }
 #endif
 
-	put_gc_inode(&ilist);
 	return ret;
 }
 
