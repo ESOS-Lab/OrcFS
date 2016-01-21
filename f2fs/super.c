@@ -594,6 +594,10 @@ static int waf_info_seq_show(struct seq_file *seq, void *offset)
         gc_valid_blocks_data = 0;
 	dummy_page_count = 0;
 
+//TEMP I added code about iteration_flag at 2016. 01. 20 by JT
+	/*printk("CHANGE!!\n");
+	set_iteration_flag(true);*/
+
 	return 0;
 }
 #endif
@@ -1088,6 +1092,7 @@ try_onemore:
 	mutex_init(&sbi->gc_mutex);
 	mutex_init(&sbi->writepages);
 	mutex_init(&sbi->cp_mutex);
+	mutex_init(&do_w_mutex);
 	init_rwsem(&sbi->node_write);
 	sbi->por_doing = false;
 	spin_lock_init(&sbi->stat_lock);

@@ -24,6 +24,7 @@
 #include "segment.h"
 #include <trace/events/f2fs.h>
 
+
 static void f2fs_read_end_io(struct bio *bio, int err)
 {
 	struct bio_vec *bvec;
@@ -208,7 +209,7 @@ static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
 	struct f2fs_sb_info *sbi;
 
         struct f2fs_node *rn;
-	struct f2fs_summary sum;
+	//struct f2fs_summary sum;
 
 	struct page *last_page;
 	block_t new_blkaddr;
@@ -272,12 +273,6 @@ repeat:
 #ifdef F2FS_DA_MAP_DBG
 	printk("    [JS DBG] add dummy to blkaddr %d\n", new_blkaddr);
 #endif
-
-	/* updates a summary entry in the current summary block */
-//	if(IS_NODESEG(type)){
-	set_summary(&sum, -1, 0, 0);
-	__add_sum_entry(sbi, type, &sum);
-//	}
 
 	/* Lock sit_i mutext */
 	mutex_lock(&sit_i->sentry_lock);
@@ -478,19 +473,6 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 
 	if (!is_read)
 		inc_page_count(sbi, F2FS_WRITEBACK);
-
-#ifdef F2FS_DA_MAP
-	if (dio != NULL && (F2FS_PLUG_ON == true)){
-                if(IS_NODESEG(dio->type) && 
-                                !is_read && 
-                                (io->last_block_in_bio == blk_addr - 1) &&
-                                (fio->rw == WRITE_SYNC) &&
-                                (io->fio.rw != fio->rw)){
-
-                        io->fio.rw = fio->rw;
-                }
-        }
-#endif
 
 	if (io->bio && (io->last_block_in_bio != blk_addr - 1 ||
 						io->fio.rw != fio->rw)){
@@ -776,7 +758,11 @@ struct page *get_lock_data_page(struct inode *inode, pgoff_t index)
 	int err;
 
 repeat:
+//TEMP I added code about grab_cache_page_flag at 2016. 01. 20 by JT
+	//set_grab_cache_page_flag(true);
 	page = grab_cache_page(mapping, index);
+	//set_grab_cache_page_flag(false);
+
 	if (!page)
 		return ERR_PTR(-ENOMEM);
 

@@ -772,6 +772,7 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 
 #ifdef F2FS_DA_MAP
 extern bool F2FS_PLUG_ON;
+extern struct mutex do_w_mutex;
 
 void __add_sum_entry(struct f2fs_sb_info *sbi, int type, struct f2fs_summary *sum);
 int __get_segment_type(struct page *page, enum page_type p_type);

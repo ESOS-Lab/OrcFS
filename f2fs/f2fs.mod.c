@@ -37,6 +37,7 @@ __attribute__((section("__versions"))) = {
 	{ 0xc94351df, __VMLINUX_SYMBOL_STR(generic_getxattr) },
 	{ 0x579eabae, __VMLINUX_SYMBOL_STR(up_read) },
 	{ 0x4cb99946, __VMLINUX_SYMBOL_STR(bio_alloc_bioset) },
+	{ 0x118d67d7, __VMLINUX_SYMBOL_STR(__set_grab_cache_page_flag) },
 	{ 0xf3a1f5af, __VMLINUX_SYMBOL_STR(make_bad_inode) },
 	{ 0x714c039, __VMLINUX_SYMBOL_STR(generic_file_llseek) },
 	{ 0xda3e43d1, __VMLINUX_SYMBOL_STR(_raw_spin_unlock) },
@@ -115,6 +116,7 @@ __attribute__((section("__versions"))) = {
 	{ 0xc4b5c09, __VMLINUX_SYMBOL_STR(proc_mkdir) },
 	{ 0x7b2baff4, __VMLINUX_SYMBOL_STR(mpage_readpage) },
 	{ 0x8f64aa4, __VMLINUX_SYMBOL_STR(_raw_spin_unlock_irqrestore) },
+	{ 0x60f8171f, __VMLINUX_SYMBOL_STR(__set_iteration_flag) },
 	{ 0x36586807, __VMLINUX_SYMBOL_STR(current_task) },
 	{ 0x830b0bfa, __VMLINUX_SYMBOL_STR(freezing_slow_path) },
 	{ 0x746765b2, __VMLINUX_SYMBOL_STR(__bread_gfp) },
@@ -277,4 +279,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "7E8BEB55D5F76E8B7E0BA4A");
+MODULE_INFO(srcversion, "CE879443C1FB7EE43ABBF6A");

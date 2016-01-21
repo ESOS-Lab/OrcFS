@@ -28,6 +28,8 @@
 
 #define __reverse_ffz(x) __reverse_ffs(~(x))
 
+struct mutex do_w_mutex;
+
 static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
@@ -1284,9 +1286,6 @@ static void do_write_page(struct f2fs_sb_info *sbi, struct page *page,
 	int type = __get_segment_type(page, fio->type);
 
 #ifdef F2FS_DA_MAP
-	struct mutex do_w_mutex;
-	mutex_init(&do_w_mutex);
-
 	/* Acquire do_w_mutex lock  */
 	mutex_lock(&do_w_mutex);
 
