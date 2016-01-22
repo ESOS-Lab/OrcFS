@@ -450,7 +450,17 @@ static void f2fs_put_super(struct super_block *sb)
 		remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-                remove_proc_entry("block_copy_info", sbi->s_proc);
+        	/* Free kernel buffers for proc filesystem */
+		kfree(block_copy);
+		kfree(block_copy_free);
+		kfree(block_copy_secno);
+		kfree(block_copy_type);
+		kfree(block_copy_node);
+		kfree(gc_sec_latency);
+		kfree(gc_total_latency);
+		kfree(gc_type_info);
+
+		remove_proc_entry("block_copy_info", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
@@ -671,9 +681,9 @@ static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
 {
         int i;
 
-	seq_printf(seq, "n_blocks\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_latency\tgc_type\n");
+	seq_printf(seq, "n_blocks\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_sec_latency\tgc_total_latency\tgc_type\n");
         for(i=0; i<block_copy_index; i++){
-		seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_latency[i], gc_type_info[i]);
+		seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_total_latency[i], gc_type_info[i]);
         }
 
         block_copy_proc_is_called = true;
@@ -1219,9 +1229,10 @@ try_onemore:
         block_copy_secno = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_type = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_node = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
-        gc_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
+        gc_sec_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
+        gc_total_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_type_info = kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
-        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !block_copy_node || !gc_latency || !gc_type_info){
+        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !block_copy_node || !gc_sec_latency || !gc_total_latency || !gc_type_info){
                 err = -ENOMEM;
                 goto free_nm;
         }
