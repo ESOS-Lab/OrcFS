@@ -524,8 +524,8 @@ static inline bool need_inplace_update(struct inode *inode)
 	if (policy & (0x1 << F2FS_IPU_FORCE))
 		return true;
 //TEMP
-//	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
-//		return true;
+	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
+		return true;
 	if (policy & (0x1 << F2FS_IPU_UTIL) &&
 			utilization(sbi) > SM_I(sbi)->min_ipu_util)
 		return true;
@@ -774,7 +774,8 @@ extern unsigned int* block_copy_free;
 extern unsigned int* block_copy_secno;
 extern unsigned int* block_copy_type;
 extern unsigned int* block_copy_node;
-extern long long* gc_latency;
+extern long long* gc_sec_latency;
+extern long long* gc_total_latency;
 extern int* gc_type_info;
 extern unsigned int block_copy_index;
 extern unsigned int max_block_copy_index;

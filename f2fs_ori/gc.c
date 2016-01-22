@@ -706,8 +706,9 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 	struct page *sum_page;
         struct f2fs_summary_block *sum;
-        long long gc_time_start, gc_time_end;
-        gc_time_start = get_current_utime();
+	long long gc_total_time_start, gc_total_time_end;
+        long long gc_sec_time_start, gc_sec_time_end;
+        gc_total_time_start = get_current_utime();
 #endif
 
 	INIT_LIST_HEAD(&ilist);
@@ -716,6 +717,10 @@ gc_more:
 		goto stop;
 	if (unlikely(f2fs_cp_error(sbi)))
 		goto stop;
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        gc_sec_time_start = get_current_utime();
+#endif
 
 	if (gc_type == BG_GC && has_not_enough_free_secs(sbi, nfree)) {
 		gc_type = FG_GC;
@@ -741,7 +746,8 @@ gc_more:
                         block_copy_secno[i] = 0;
                         block_copy_type[i] = 0;
                         block_copy_node[i] = 0;
-                        gc_latency[i] = 0;
+                        gc_sec_latency[i] = 0;
+                        gc_total_latency[i] = 0;
                         gc_type_info[i] = 0;
                 }
                 block_copy_proc_is_called = false;
@@ -787,6 +793,13 @@ gc_more:
 		WARN_ON(get_valid_blocks(sbi, segno, sbi->segs_per_sec));
 	}
 
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        gc_sec_time_end = get_current_utime();
+        if(block_copy_index < max_block_copy_index){
+                gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
+        }
+#endif
+
 	if (has_not_enough_free_secs(sbi, nfree))
 		goto gc_more;
 
@@ -797,9 +810,9 @@ stop:
 	put_gc_inode(&ilist);
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-        gc_time_end = get_current_utime();
+        gc_total_time_end = get_current_utime();
         if(block_copy_index < max_block_copy_index){
-                gc_latency[block_copy_index-1] = gc_time_end - gc_time_start;
+                gc_total_latency[block_copy_index-1] = gc_total_time_end - gc_total_time_start;
         }
 #endif
 

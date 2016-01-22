@@ -42,7 +42,8 @@ unsigned int* block_copy_free = NULL;
 unsigned int* block_copy_secno = NULL;
 unsigned int* block_copy_type = NULL;
 unsigned int* block_copy_node = NULL;
-long long* gc_latency = NULL;
+long long* gc_sec_latency = NULL;
+long long* gc_total_latency = NULL;
 int* gc_type_info = NULL;
 unsigned int block_copy_index = 0;
 unsigned int max_block_copy_index = 4096;
@@ -1002,10 +1003,9 @@ static void allocate_segment_by_default(struct f2fs_sb_info *sbi,
 		new_curseg(sbi, type, false);
 	else if (curseg->alloc_type == LFS && is_next_segment_free(sbi, type))
 		new_curseg(sbi, type, false);
-/*
+//TEMP
 	else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
 		change_curseg(sbi, type, true);
-*/
 	else
 		new_curseg(sbi, type, false);
 
