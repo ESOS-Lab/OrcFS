@@ -22,6 +22,7 @@
  *   Joontaek Oh (na94jun@gmail.com)
  *
  * History
+ * 16.01.30. Add Pre-free throttle - Jinsoo Yoo
  */
 
 #include <linux/blkdev.h>
@@ -29,6 +30,7 @@
 /* Define for Disaggregate Mapping - Jinsoo, 150119*/
 #define F2FS_DA_MAP
 //#define F2FS_DA_MAP_DBG
+#define F2FS_PTF
 
 /* Get filesystem info from proc */
 #define F2FS_GET_FS_WAF
@@ -507,6 +509,13 @@ static inline bool excess_prefree_segs(struct f2fs_sb_info *sbi)
 {
 	return prefree_segments(sbi) > SM_I(sbi)->rec_prefree_segments;
 }
+
+#ifdef F2FS_PTF
+static inline bool has_excess_prefree_segs(struct f2fs_sb_info *sbi)
+{
+        return (prefree_segments(sbi) >= (TOTAL_SEGS(sbi) / 10));
+}
+#endif
 
 static inline int utilization(struct f2fs_sb_info *sbi)
 {

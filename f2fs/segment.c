@@ -22,6 +22,7 @@
  *   Joontaek Oh (na94jun@gmail.com)
  *
  * History
+ * 16.01.30. Add Pre-free Throttle - Jinsoo Yoo 
  */
 
 #include <linux/fs.h>
@@ -296,10 +297,24 @@ void f2fs_balance_fs(struct f2fs_sb_info *sbi)
 	 * We should do GC or end up with checkpoint, if there are so many dirty
 	 * dir/node pages without enough free segments.
 	 */
+#ifdef F2FS_PTF
+        struct cp_control cpc = {
+                .reason = CP_SYNC,
+        };
+#endif
+
 	if (has_not_enough_free_secs(sbi, 0)) {
 		mutex_lock(&sbi->gc_mutex);
 		f2fs_gc(sbi);
 	}
+#ifdef F2FS_PTF
+        if (has_excess_prefree_segs(sbi)) {
+                mutex_lock(&sbi->gc_mutex);
+//              write_checkpoint(sbi, &cpc);
+		clear_prefree_segments(sbi);
+                mutex_unlock(&sbi->gc_mutex);
+        }
+#endif
 }
 
 void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi)
