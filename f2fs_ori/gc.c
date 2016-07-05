@@ -711,6 +711,13 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
         gc_total_time_start = get_current_utime();
 #endif
 
+#ifdef F2FS_DA_QPGC
+	struct list_head *b_io = &sbi->sb->s_bdi->wb.b_io;
+	static struct gc_context gc_ctx = {
+		.latest_seg = 0,
+	};
+#endif
+
 	INIT_LIST_HEAD(&ilist);
 gc_more:
 	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
@@ -727,8 +734,22 @@ gc_more:
 		write_checkpoint(sbi, &cpc);
 	}
 
+#ifdef F2FS_DA_QPGC
+	/* 
+		If has_victim is true, there was preemption in gc before and there was victim sec. 
+		So, If has_victim is false, select new victim section.
+		If has_victim is true, get the old victim section.
+	*/
+	if (!gc_ctx.has_victim) {
+		if (!__get_victim(sbi, &gc_ctx.segno, gc_type, NO_CHECK_TYPE))
+			goto stop;
+		gc_ctx.has_victim = true;
+	}
+	segno = gc_ctx.segno;
+#else
 	if (!__get_victim(sbi, &segno, gc_type, NO_CHECK_TYPE))
 		goto stop;
+#endif
 	ret = 0;
 
 	/* readahead multi ssa blocks those have contiguous address */
@@ -784,6 +805,32 @@ gc_more:
 
         }
 #endif
+
+#ifdef F2FS_DA_QPGC
+	/*
+		If current state is soft gc, it can be preempt.
+		However, If current state is hard gc, it can't be preempt.
+
+		Both of them start from next segment number of segment that has
+		cleaned before gc is preempted.
+	*/
+        if (is_soft_threshold) {
+                for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec - 1; i++) {
+                        do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+                        if (!list_empty(b_io)) {
+                                gc_ctx.latest_seg = i + 1;
+                                goto stop;
+                        }
+                }
+                do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+        }
+        else {
+                for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec; i++)
+                        do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+        }
+	gc_ctx.has_victim = false;
+	gc_ctx.latest_seg = 0;
+#else
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);
 
@@ -792,6 +839,7 @@ gc_more:
 		nfree++;
 		WARN_ON(get_valid_blocks(sbi, segno, sbi->segs_per_sec));
 	}
+#endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         gc_sec_time_end = get_current_utime();

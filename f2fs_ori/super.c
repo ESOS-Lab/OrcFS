@@ -1214,6 +1214,12 @@ try_onemore:
         }
 #endif
 
+#ifdef F2FS_DA_QPGC
+        hard_threshold = reserved_sections(sbi) / 2;
+        if (5 < hard_threshold)
+                hard_threshold = 5;
+#endif
+
 	/* get an inode for node space */
 	sbi->node_inode = f2fs_iget(sb, F2FS_NODE_INO(sbi));
 	if (IS_ERR(sbi->node_inode)) {

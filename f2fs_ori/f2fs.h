@@ -20,6 +20,9 @@
 #include <linux/kobject.h>
 #include <linux/sched.h>
 
+/* Define for Quasi Preemptive GC - Joontaek Oh, 2016.07.05 */
+#define F2FS_DA_QPGC
+
 #ifdef CONFIG_F2FS_CHECK_FS
 #define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
 #define f2fs_down_write(x, y)	down_write_nest_lock(x, y)

@@ -984,7 +984,16 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
         len_user_data += len;
 #endif
 
+#ifdef F2FS_DA_QPGC
+        if (has_not_enough_free_secs(sbi, 0) == 2)
+        {
+                mutex_lock(&sbi->gc_mutex);
+                f2fs_gc(sbi);
+        }
+#else
 	f2fs_balance_fs(sbi);
+#endif
+
 repeat:
 	err = f2fs_convert_inline_data(inode, pos + len, NULL);
 	if (err)
