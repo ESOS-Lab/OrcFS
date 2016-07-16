@@ -829,9 +829,6 @@ gc_more:
 
 	if (gc_type == FG_GC)
 		write_checkpoint(sbi, &cpc);
-stop:
-	mutex_unlock(&sbi->gc_mutex);
-	put_gc_inode(&ilist);
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 	gc_total_time_end = get_current_utime();
@@ -839,6 +836,10 @@ stop:
                 gc_total_latency[block_copy_index-1] = gc_total_time_end - gc_total_time_start;
         }
 #endif
+
+stop:
+	mutex_unlock(&sbi->gc_mutex);
+	put_gc_inode(&ilist);
 
 	return ret;
 }

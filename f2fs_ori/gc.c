@@ -819,7 +819,7 @@ gc_more:
                         do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
                         if (!list_empty(b_io)) {
                                 gc_ctx.latest_seg = i + 1;
-                                goto stop;
+                                goto preemption;
                         }
                 }
                 do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
@@ -833,13 +833,12 @@ gc_more:
 #else
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);
-
+#endif
 	if (gc_type == FG_GC) {
 		sbi->cur_victim_sec = NULL_SEGNO;
 		nfree++;
 		WARN_ON(get_valid_blocks(sbi, segno, sbi->segs_per_sec));
 	}
-#endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         gc_sec_time_end = get_current_utime();
@@ -853,16 +852,17 @@ gc_more:
 
 	if (gc_type == FG_GC)
 		write_checkpoint(sbi, &cpc);
-stop:
-	mutex_unlock(&sbi->gc_mutex);
-	put_gc_inode(&ilist);
-
+preemption:
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         gc_total_time_end = get_current_utime();
         if(block_copy_index < max_block_copy_index){
                 gc_total_latency[block_copy_index-1] = gc_total_time_end - gc_total_time_start;
         }
 #endif
+
+stop:
+	mutex_unlock(&sbi->gc_mutex);
+	put_gc_inode(&ilist);
 
 	return ret;
 }

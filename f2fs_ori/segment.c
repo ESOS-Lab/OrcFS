@@ -278,7 +278,7 @@ void f2fs_balance_fs(struct f2fs_sb_info *sbi)
 	case 0:
 		break;
 	case 1:
-		if (mutex_trylock(&sbi->gc_mutex)) {
+		if (list_empty(&sbi->sb->s_bdi->wb.b_io) && mutex_trylock(&sbi->gc_mutex)) {
 			is_soft_threshold = true;
 			f2fs_gc(sbi);
 		}
