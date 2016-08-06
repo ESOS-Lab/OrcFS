@@ -8,45 +8,16 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
-/*
- * Unified Storage Layer
- *
- * Copyright(c)2015
- * Hanyang University, Seoul, Korea
- * Embedded Software Systems Laboratory. All right reserved
- *
- * File: fs/f2fs/segment.h
- * Author:
- *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
- *   Joontaek Oh (na94jun@gmail.com)
- *
- * History
- * 16.01.30. Add Pre-free throttle - Jinsoo Yoo
- */
-
 #include <linux/blkdev.h>
-
-/* Define for Disaggregate Mapping - Jinsoo, 150119*/
-#define F2FS_DA_MAP
-//#define F2FS_DA_MAP_DBG
-#define F2FS_PTF
 
 /* Get filesystem info from proc */
 #define F2FS_GET_FS_WAF
 #define F2FS_GET_VALID_BLOCKS_INFO
 #define F2FS_GET_BLOCK_COPY_INFO
 
-//#define F2FS_GET_FS_WORKLOAD
-#define BIO_MAX_W_DUMMY	129
-
-
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
 #endif
-
-#define NAND_PAGE_SIZE		8192
-#define N_PAGE_ALIGN	((NAND_PAGE_SIZE)/(PAGE_SIZE))
 
 /* constant macro */
 #define NULL_SEGNO			((unsigned int)(~0))
@@ -294,6 +265,11 @@ struct sit_entry_set {
 	unsigned int entry_cnt;		/* the # of sit entries in set */
 };
 
+#ifdef F2FS_DA_QPGC
+extern bool is_soft_threshold;
+extern int hard_threshold;
+#endif
+
 /*
  * inline functions
  */
@@ -493,6 +469,25 @@ static inline bool need_SSR(struct f2fs_sb_info *sbi)
 						reserved_sections(sbi) + 1);
 }
 
+#ifdef F2FS_DA_QPGC
+static inline unsigned int has_not_enough_free_secs(struct f2fs_sb_info *sbi, int freed)
+{
+        int node_secs = get_blocktype_secs(sbi, F2FS_DIRTY_NODES);
+        int dent_secs = get_blocktype_secs(sbi, F2FS_DIRTY_DENTS);
+        int free_secs = free_sections(sbi);
+        int resv_secs = reserved_sections(sbi);
+
+        if (unlikely(sbi->por_doing))
+                return false;
+
+        if ((free_secs + freed) <= (node_secs + 2 * dent_secs + hard_threshold))
+                return 2;
+        else if ((free_secs + freed) <= (node_secs + 2 * dent_secs + resv_secs))
+                return 1;
+        else
+                return 0;
+}
+#else
 static inline bool has_not_enough_free_secs(struct f2fs_sb_info *sbi, int freed)
 {
 	int node_secs = get_blocktype_secs(sbi, F2FS_DIRTY_NODES);
@@ -504,18 +499,12 @@ static inline bool has_not_enough_free_secs(struct f2fs_sb_info *sbi, int freed)
 	return (free_sections(sbi) + freed) <= (node_secs + 2 * dent_secs +
 						reserved_sections(sbi));
 }
+#endif
 
 static inline bool excess_prefree_segs(struct f2fs_sb_info *sbi)
 {
 	return prefree_segments(sbi) > SM_I(sbi)->rec_prefree_segments;
 }
-
-#ifdef F2FS_PTF
-static inline bool has_excess_prefree_segs(struct f2fs_sb_info *sbi)
-{
-        return (prefree_segments(sbi) >= (TOTAL_SEGS(sbi) / 10));
-}
-#endif
 
 static inline int utilization(struct f2fs_sb_info *sbi)
 {
@@ -546,9 +535,6 @@ enum {
 	F2FS_IPU_UTIL,
 	F2FS_IPU_SSR_UTIL,
 	F2FS_IPU_FSYNC,
-#ifdef F2FS_DA_MAP
-	F2FS_IPU_DISABLE,
-#endif
 };
 
 static inline bool need_inplace_update(struct inode *inode)
@@ -559,12 +545,10 @@ static inline bool need_inplace_update(struct inode *inode)
 	/* IPU can be done only for the user data */
 	if (S_ISDIR(inode->i_mode) || f2fs_is_atomic_file(inode))
 		return false;
-#ifdef F2FS_DA_MAP
-	if (policy & (0x1 << F2FS_IPU_DISABLE))
-		return false;
-#endif
+
 	if (policy & (0x1 << F2FS_IPU_FORCE))
 		return true;
+//TEMP
 	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
 		return true;
 	if (policy & (0x1 << F2FS_IPU_UTIL) &&
@@ -799,27 +783,12 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 	return desired - nr_to_write;
 }
 
-#ifdef F2FS_DA_MAP
-extern bool F2FS_PLUG_ON;
-extern struct mutex do_w_mutex;
-
-void __add_sum_entry(struct f2fs_sb_info *sbi, int type, struct f2fs_summary *sum);
-int __get_segment_type(struct page *page, enum page_type p_type);
-void __refresh_next_blkoff(struct f2fs_sb_info *sbi,
-                                struct curseg_info *seg);
-bool __has_curseg_space(struct f2fs_sb_info *sbi, int type);
-void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del);
-void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno);
-void submit_invalid_segment_number(struct f2fs_sb_info *sbi, int segno);
-#endif
-
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
 extern unsigned long long len_data_write;
 extern unsigned long long len_node_write;
 extern unsigned long long len_meta_write;
-extern unsigned long long dummy_page_count;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO

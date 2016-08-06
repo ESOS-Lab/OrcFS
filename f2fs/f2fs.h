@@ -20,8 +20,8 @@
 #include <linux/kobject.h>
 #include <linux/sched.h>
 
-/* Define for Disaggregate Mapping - Jinsoo, 150401 */
-#define F2FS_DA_MAP
+/* Define for Quasi Preemptive GC - Joontaek Oh, 2016.07.05 */
+//#define F2FS_DA_QPGC
 
 #ifdef CONFIG_F2FS_CHECK_FS
 #define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
@@ -463,14 +463,6 @@ struct f2fs_io_info {
 	enum page_type type;	/* contains DATA/NODE/META/META_FLUSH */
 	int rw;			/* contains R/RS/W/WS with REQ_META/REQ_PRIO */
 };
-
-#ifdef F2FS_DA_MAP
-struct f2fs_da_io_info {
-	block_t old_blkaddr;
-	int type;
-	struct f2fs_summary *sum;
-};
-#endif
 
 #define is_read_io(rw)	(((rw) & 1) == READ)
 struct f2fs_bio_info {
@@ -1330,12 +1322,8 @@ void write_data_page(struct page *, struct dnode_of_data *, block_t *,
 void rewrite_data_page(struct page *, block_t, struct f2fs_io_info *);
 void recover_data_page(struct f2fs_sb_info *, struct page *,
 				struct f2fs_summary *, block_t, block_t);
-
-void get_next_data_block(struct f2fs_sb_info *sbi, block_t *new_blkaddr, int type);
-
 void allocate_data_block(struct f2fs_sb_info *, struct page *,
 		block_t, block_t *, struct f2fs_summary *, int);
-
 void f2fs_wait_on_page_writeback(struct page *, enum page_type);
 void write_data_summaries(struct f2fs_sb_info *, block_t);
 void write_node_summaries(struct f2fs_sb_info *, block_t);
@@ -1379,14 +1367,8 @@ void destroy_checkpoint_caches(void);
  */
 void f2fs_submit_merged_bio(struct f2fs_sb_info *, enum page_type, int);
 int f2fs_submit_page_bio(struct f2fs_sb_info *, struct page *, block_t, int);
-
-#ifdef F2FS_DA_MAP
-void f2fs_submit_page_mbio(struct f2fs_sb_info *, struct page *, block_t,
-						struct f2fs_io_info *, struct f2fs_da_io_info *);
-#else
 void f2fs_submit_page_mbio(struct f2fs_sb_info *, struct page *, block_t,
 						struct f2fs_io_info *);
-#endif
 int reserve_new_block(struct dnode_of_data *);
 int f2fs_reserve_block(struct dnode_of_data *, pgoff_t);
 void update_extent_cache(block_t, struct dnode_of_data *);

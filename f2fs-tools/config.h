@@ -8,7 +8,7 @@
 #define F2FS_MINOR_VERSION 4
 
 /* f2fs-tools date based on Source releases */
-#define F2FS_TOOLS_DATE "2014-12-29"
+#define F2FS_TOOLS_DATE "2014-09-18"
 
 /* f2fs-tools version */
 #define F2FS_TOOLS_VERSION "1.4.0"

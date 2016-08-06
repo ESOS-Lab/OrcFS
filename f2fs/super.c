@@ -8,22 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
-/*
- * Unified Storage Layer
- *
- * Copyright(c)2015
- * Hanyang University, Seoul, Korea
- * Embedded Software Systems Laboratory. All right reserved
- *
- * File: fs/f2fs/super.c
- * Author:
- *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
- *   Joontaek Oh (na94jun@gmail.com)
- *
- * History
- */
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/fs.h>
@@ -447,20 +431,20 @@ static void f2fs_put_super(struct super_block *sb)
 		remove_proc_entry("waf_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
-		remove_proc_entry("valid_blocks_info", sbi->s_proc);
+                remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-        	/* Free kernel buffers for proc filesystem */
-		kfree(block_copy);
-		kfree(block_copy_free);
-		kfree(block_copy_secno);
-		kfree(block_copy_type);
-		kfree(block_copy_node);
-		kfree(gc_sec_latency);
-		kfree(gc_total_latency);
-		kfree(gc_type_info);
+		/* Free kernel buffers for proc filesystem */
+                kfree(block_copy);
+                kfree(block_copy_free);
+                kfree(block_copy_secno);
+                kfree(block_copy_type);
+                kfree(block_copy_node);
+                kfree(gc_sec_latency);
+                kfree(gc_total_latency);
+                kfree(gc_type_info);
 
-		remove_proc_entry("block_copy_info", sbi->s_proc);
+                remove_proc_entry("block_copy_info", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
@@ -609,86 +593,79 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 #ifdef F2FS_GET_FS_WAF
 static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
-	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n", len_user_data,
-                                                        len_fs_write,
-                                                        len_data_write,
-                                                        len_node_write,
-                                                        len_meta_write,
-							dummy_page_count);
+	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\n", len_user_data, 
+							len_fs_write, 
+							len_data_write, 
+							len_node_write, 
+							len_meta_write);
 
-	len_user_data = 0;
+        len_user_data = 0;
         len_fs_write = 0;
-        len_data_write = 0;
-        len_node_write = 0;
-        len_meta_write = 0;
-	dummy_page_count = 0;
+	len_data_write = 0;
+	len_node_write = 0;
+	len_meta_write = 0;
 
-//TEMP I added code about iteration_flag at 2016. 01. 20 by JT
-	/*printk("CHANGE!!\n");
-	set_iteration_flag(true);*/
-
-	return 0;
+        return 0;
 }
 #endif
 
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
 static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
 {
-	int i;
+        int i;
         struct super_block *sb = seq->private;
         struct f2fs_sb_info *sbi = F2FS_SB(sb);
 	struct free_segmap_info *free_i = FREE_I(sbi);
         unsigned int n_total_segs = le32_to_cpu(sbi->raw_super->segment_count_main);
         unsigned int valid_blocks = 0;
-        int section = sbi->segs_per_sec;
+	int section = sbi->segs_per_sec;
 	int type;
 	int allocated;
 
-        if(section > 1){
-                for(i = 0; i < n_total_segs ; i+=section){
-                        valid_blocks = get_valid_blocks(sbi, i, section);
+	if(section > 1){
+	        for(i = 0; i < n_total_segs ; i+=section){
+			valid_blocks = get_valid_blocks(sbi, i, section);
 			type = get_seg_entry(sbi, i)->type;
 			if(test_bit(GET_SECNO(sbi, i), free_i->free_secmap)){
-                                allocated = 1;
-                        }
-                        else{
-                                allocated = 0;
-                        }
-                        seq_printf(seq, "%d\t%d\t%d\t%u\n", GET_SECNO(sbi, i), type, allocated, valid_blocks);
-
-                }
-        }
-        else{
-                for(i = 0; i < n_total_segs ; i++){
-                        valid_blocks = get_seg_entry(sbi, i)->valid_blocks;
+				allocated = 1;
+			}
+			else{
+				allocated = 0;
+			}
+	                seq_printf(seq, "%d\t%d\t%d\t%u\n", GET_SECNO(sbi, i), type, allocated, valid_blocks);
+        	}
+	}
+	else{
+	        for(i = 0; i < n_total_segs ; i++){
+                	valid_blocks = get_seg_entry(sbi, i)->valid_blocks;
 			type = get_seg_entry(sbi, i)->type;
 			if(test_bit(i, free_i->free_segmap)){
-                                allocated = 1;
-                        }
-                        else{
-                                allocated = 0;
-                        }
-                        seq_printf(seq, "%d\t%d\t%d\t%u\n", i, type, allocated, valid_blocks);
-                }
-        }
+				allocated = 1;
+			}
+			else{
+				allocated = 0;
+			}
+	                seq_printf(seq, "%d\t%d\t%d\t%u\n", i, type, allocated, valid_blocks);
+        	}
+	}
 
-	return 0;
+        return 0;
 }
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
 {
-        int i;
+	int i;
 
 	seq_printf(seq, "n_blocks\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_sec_latency\tgc_total_latency\tgc_type\n");
         for(i=0; i<block_copy_index; i++){
-		seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_total_latency[i], gc_type_info[i]);
+                seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_total_latency[i], gc_type_info[i]);
         }
 
-        block_copy_proc_is_called = true;
+	block_copy_proc_is_called = true;
 
-        return 0;
+	return 0;
 }
 #endif
 
@@ -729,7 +706,7 @@ static int waf_info_open_fs(struct inode *inode, struct file *file)
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
 static int valid_blocks_info_open_fs(struct inode *inode, struct file *file)
 {
-	return single_open(file, valid_blocks_info_seq_show, PDE_DATA(inode));
+        return single_open(file, valid_blocks_info_seq_show, PDE_DATA(inode));
 }
 #endif
 
@@ -757,11 +734,11 @@ static const struct file_operations f2fs_waf_info_fops = {
 
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
 static const struct file_operations f2fs_valid_blocks_info_fops = {
-	.owner = THIS_MODULE,
-	.open = valid_blocks_info_open_fs,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
+        .owner = THIS_MODULE,
+        .open = valid_blocks_info_open_fs,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release,
 };
 #endif
 
@@ -1154,7 +1131,6 @@ try_onemore:
 	mutex_init(&sbi->gc_mutex);
 	mutex_init(&sbi->writepages);
 	mutex_init(&sbi->cp_mutex);
-	mutex_init(&do_w_mutex);
 	init_rwsem(&sbi->node_write);
 	sbi->por_doing = false;
 	spin_lock_init(&sbi->stat_lock);
@@ -1238,6 +1214,12 @@ try_onemore:
         }
 #endif
 
+#ifdef F2FS_DA_QPGC
+        hard_threshold = reserved_sections(sbi) / 2;
+        if (5 < hard_threshold)
+                hard_threshold = 5;
+#endif
+
 	/* get an inode for node space */
 	sbi->node_inode = f2fs_iget(sb, F2FS_NODE_INO(sbi));
 	if (IS_ERR(sbi->node_inode)) {
@@ -1281,9 +1263,9 @@ try_onemore:
 				 &f2fs_waf_info_fops, sb);
 #endif
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
-	if (sbi->s_proc)
-		proc_create_data("valid_blocks_info", S_IRUGO, sbi->s_proc,
-				 &f2fs_valid_blocks_info_fops, sb);
+        if (sbi->s_proc)
+                proc_create_data("valid_blocks_info", S_IRUGO, sbi->s_proc,
+                                 &f2fs_valid_blocks_info_fops, sb);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         if (sbi->s_proc)
@@ -1339,10 +1321,10 @@ free_kobj:
 free_proc:
 	if (sbi->s_proc) {
 #ifdef F2FS_GET_FS_WAF
-		remove_proc_entry("waf_info", sbi->s_proc);
+                remove_proc_entry("waf_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
-		remove_proc_entry("valid_blocks_info", sbi->s_proc);
+                remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
                 remove_proc_entry("block_copy_info", sbi->s_proc);

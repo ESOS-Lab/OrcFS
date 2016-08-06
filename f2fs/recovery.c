@@ -476,9 +476,8 @@ next:
 		blkaddr = next_blkaddr_of_node(page);
 		f2fs_put_page(page, 1);
 	}
-	if (!err){
+	if (!err)
 		allocate_new_segments(sbi);
-	}
 	return err;
 }
 
@@ -506,7 +505,6 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 	blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
 
 	err = find_fsync_dnodes(sbi, &inode_list);
-
 	if (err)
 		goto out;
 
@@ -516,7 +514,6 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 	need_writecp = true;
 
 	/* step #2: recover data */
-
 	err = recover_data(sbi, &inode_list, CURSEG_WARM_NODE);
 	if (!err)
 		f2fs_bug_on(sbi, !list_empty(&inode_list));

@@ -23,7 +23,6 @@ __attribute__((section("__versions"))) = {
 	{ 0x964b601a, __VMLINUX_SYMBOL_STR(kobject_put) },
 	{ 0x413c01e4, __VMLINUX_SYMBOL_STR(blkdev_issue_discard) },
 	{ 0xd5d786e, __VMLINUX_SYMBOL_STR(kset_create_and_add) },
-	{ 0xd856350d, __VMLINUX_SYMBOL_STR(alloc_pages_current) },
 	{ 0xa9df11dd, __VMLINUX_SYMBOL_STR(kmem_cache_destroy) },
 	{ 0x8dfd488a, __VMLINUX_SYMBOL_STR(fs_bio_set) },
 	{ 0xd99a8d9d, __VMLINUX_SYMBOL_STR(iget_failed) },
@@ -37,7 +36,6 @@ __attribute__((section("__versions"))) = {
 	{ 0xc94351df, __VMLINUX_SYMBOL_STR(generic_getxattr) },
 	{ 0x579eabae, __VMLINUX_SYMBOL_STR(up_read) },
 	{ 0x4cb99946, __VMLINUX_SYMBOL_STR(bio_alloc_bioset) },
-	{ 0x118d67d7, __VMLINUX_SYMBOL_STR(__set_grab_cache_page_flag) },
 	{ 0xf3a1f5af, __VMLINUX_SYMBOL_STR(make_bad_inode) },
 	{ 0x714c039, __VMLINUX_SYMBOL_STR(generic_file_llseek) },
 	{ 0xda3e43d1, __VMLINUX_SYMBOL_STR(_raw_spin_unlock) },
@@ -116,7 +114,6 @@ __attribute__((section("__versions"))) = {
 	{ 0xc4b5c09, __VMLINUX_SYMBOL_STR(proc_mkdir) },
 	{ 0x7b2baff4, __VMLINUX_SYMBOL_STR(mpage_readpage) },
 	{ 0x8f64aa4, __VMLINUX_SYMBOL_STR(_raw_spin_unlock_irqrestore) },
-	{ 0x60f8171f, __VMLINUX_SYMBOL_STR(__set_iteration_flag) },
 	{ 0x36586807, __VMLINUX_SYMBOL_STR(current_task) },
 	{ 0x830b0bfa, __VMLINUX_SYMBOL_STR(freezing_slow_path) },
 	{ 0x746765b2, __VMLINUX_SYMBOL_STR(__bread_gfp) },
@@ -135,7 +132,6 @@ __attribute__((section("__versions"))) = {
 	{ 0x6e45d0ae, __VMLINUX_SYMBOL_STR(seq_putc) },
 	{ 0xf529952e, __VMLINUX_SYMBOL_STR(security_inode_init_security) },
 	{ 0x68b83ac6, __VMLINUX_SYMBOL_STR(posix_acl_alloc) },
-	{ 0xefd56979, __VMLINUX_SYMBOL_STR(__page_cache_alloc) },
 	{ 0x5f3e89f3, __VMLINUX_SYMBOL_STR(debugfs_remove) },
 	{ 0xcb2760cc, __VMLINUX_SYMBOL_STR(kmem_cache_free) },
 	{ 0x93a6e0b2, __VMLINUX_SYMBOL_STR(io_schedule) },
@@ -206,7 +202,6 @@ __attribute__((section("__versions"))) = {
 	{ 0x98d2a973, __VMLINUX_SYMBOL_STR(kmem_cache_create) },
 	{ 0xb6b8cfa3, __VMLINUX_SYMBOL_STR(d_tmpfile) },
 	{ 0x3e5daf36, __VMLINUX_SYMBOL_STR(register_filesystem) },
-	{ 0x4302d0eb, __VMLINUX_SYMBOL_STR(free_pages) },
 	{ 0x88db5201, __VMLINUX_SYMBOL_STR(generic_file_write_iter) },
 	{ 0x8860253a, __VMLINUX_SYMBOL_STR(event_triggers_call) },
 	{ 0xcf21d241, __VMLINUX_SYMBOL_STR(__wake_up) },
@@ -215,6 +210,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x34f22f94, __VMLINUX_SYMBOL_STR(prepare_to_wait_event) },
 	{ 0x1fb1eeb4, __VMLINUX_SYMBOL_STR(__test_set_page_writeback) },
 	{ 0x58b9557c, __VMLINUX_SYMBOL_STR(proc_create_data) },
+	{ 0x4f68e5c9, __VMLINUX_SYMBOL_STR(do_gettimeofday) },
 	{ 0xab3d27e5, __VMLINUX_SYMBOL_STR(iter_file_splice_write) },
 	{ 0xe39445e3, __VMLINUX_SYMBOL_STR(seq_lseek) },
 	{ 0xb9c1243, __VMLINUX_SYMBOL_STR(kset_unregister) },
@@ -279,4 +275,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "CE879443C1FB7EE43ABBF6A");
+MODULE_INFO(srcversion, "005829632FCBE29E15FD4AC");

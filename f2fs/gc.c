@@ -8,23 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
-/*
- * Unified Storage Layer
- *
- * Copyright(c)2015
- * Hanyang University, Seoul, Korea
- * Embedded Software Systems Laboratory. All right reserved
- *
- * File: fs/f2fs/gc.c
- * Author:
- *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
- *   Joontaek Oh (na94jun@gmail.com)
- *
- * History
- * Jun 21, 2016 Add GC latency measurement code by Jinsoo Yoo
- */
-
 #include <linux/fs.h>
 #include <linux/module.h>
 #include <linux/backing-dev.h>
@@ -475,6 +458,7 @@ next_step:
 #else
                 sync_node_pages(sbi, 0, &wbc);
 #endif
+
 		/*
 		 * In the case of FG_GC, it'd be better to reclaim this victim
 		 * completely.
@@ -511,13 +495,8 @@ block_t start_bidx_of_node(unsigned int node_ofs, struct f2fs_inode_info *fi)
 	return bidx * ADDRS_PER_BLOCK + ADDRS_PER_INODE(fi);
 }
 
-#ifdef F2FS_DA_MAP
-int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
-		struct node_info *dni, block_t blkaddr, unsigned int *nofs)
-#else
 static int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 		struct node_info *dni, block_t blkaddr, unsigned int *nofs)
-#endif
 {
 	struct page *node_page;
 	nid_t nid;
@@ -705,7 +684,6 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 		gc_data_segment(sbi, sum->entries, ilist, segno, gc_type);
 		break;
 	}
-
 	blk_finish_plug(&plug);
 
 	stat_inc_seg_count(sbi, GET_SUM_TYPE((&sum->footer)));
@@ -729,8 +707,19 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 	struct page *sum_page;
         struct f2fs_summary_block *sum;
 	long long gc_total_time_start, gc_total_time_end;
-	long long gc_sec_time_start, gc_sec_time_end;
-	gc_total_time_start = get_current_utime();
+        long long gc_sec_time_start, gc_sec_time_end;
+#endif
+
+#ifdef F2FS_DA_QPGC
+	//struct list_head *b_io = &sbi->sb->s_bdi->wb.b_io;
+	struct bdi_writeback *wb = &sbi->sb->s_bdi->wb;
+	static struct gc_context gc_ctx = {
+		.latest_seg = 0,
+	};
+#endif
+
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+        gc_total_time_start = get_current_utime();
 #endif
 
 	INIT_LIST_HEAD(&ilist);
@@ -741,7 +730,7 @@ gc_more:
 		goto stop;
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-	gc_sec_time_start = get_current_utime();
+        gc_sec_time_start = get_current_utime();
 #endif
 
 	if (gc_type == BG_GC && has_not_enough_free_secs(sbi, nfree)) {
@@ -749,8 +738,22 @@ gc_more:
 		write_checkpoint(sbi, &cpc);
 	}
 
+#ifdef F2FS_DA_QPGC
+	/* 
+		If has_victim is true, there was preemption in gc before and there was victim sec. 
+		So, If has_victim is false, select new victim section.
+		If has_victim is true, get the old victim section.
+	*/
+	if (!gc_ctx.has_victim) {
+		if (!__get_victim(sbi, &gc_ctx.segno, gc_type, NO_CHECK_TYPE))
+			goto stop;
+		gc_ctx.has_victim = true;
+	}
+	segno = gc_ctx.segno;
+#else
 	if (!__get_victim(sbi, &segno, gc_type, NO_CHECK_TYPE))
 		goto stop;
+#endif
 	ret = 0;
 
 	/* readahead multi ssa blocks those have contiguous address */
@@ -759,25 +762,25 @@ gc_more:
 								META_SSA);
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-        if(block_copy_proc_is_called == true){
+	if(block_copy_proc_is_called == true){
                 block_copy_index = 0;
 
                 for(i=0; i<max_block_copy_index; i++){
-			block_copy[i] = 0;
+                        block_copy[i] = 0;
                         block_copy_free[i] = 0;
                         block_copy_secno[i] = 0;
                         block_copy_type[i] = 0;
                         block_copy_node[i] = 0;
-			gc_sec_latency[i] = 0;
-			gc_total_latency[i] = 0;
-			gc_type_info[i] = 0;
+                        gc_sec_latency[i] = 0;
+                        gc_total_latency[i] = 0;
+                        gc_type_info[i] = 0;
                 }
                 block_copy_proc_is_called = false;
         }
 
         if(block_copy_index < max_block_copy_index){
 
-		sum_page = get_sum_page(sbi, segno);
+                sum_page = get_sum_page(sbi, segno);
                 sum = page_address(sum_page);
 
                 if(block_copy_index == 0){
@@ -786,7 +789,7 @@ gc_more:
                         block_copy_free[block_copy_index] = free_sections(sbi);
                         block_copy_secno[block_copy_index] = GET_SECNO(sbi, segno);
                         block_copy_type[block_copy_index] = GET_SUM_TYPE(&sum->footer);
-			gc_type_info[block_copy_index] = gc_type;
+                        gc_type_info[block_copy_index] = gc_type;
 
                         block_copy_index++;
                 }
@@ -797,19 +800,46 @@ gc_more:
                                 block_copy_free[block_copy_index] = free_sections(sbi);
                                 block_copy_secno[block_copy_index] = GET_SECNO(sbi, segno);
                                 block_copy_type[block_copy_index] = GET_SUM_TYPE(&sum->footer);
-				gc_type_info[block_copy_index] = gc_type;
+                                gc_type_info[block_copy_index] = gc_type;
 
                                 block_copy_index++;
                         }
                 }
-                f2fs_put_page(sum_page, 1);
+		f2fs_put_page(sum_page, 1);
 
         }
 #endif
 
+#ifdef F2FS_DA_QPGC
+	if (gc_type == BG_GC && !is_soft_threshold)
+		is_soft_threshold = true;
+	/*
+		If current state is soft gc, it can be preempt.
+		However, If current state is hard gc, it can't be preempt.
+
+		Both of them start from next segment number of segment that has
+		cleaned before gc is preempted.
+	*/
+        if (is_soft_threshold) {
+                for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec - 1; i++) {
+                        do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+                        if (wb_has_dirty_io(wb) /*!list_empty(b_io)*/) {
+                                gc_ctx.latest_seg = i + 1;
+                                goto preemption;
+                        }
+                }
+                do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+        }
+        else {
+                for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec; i++)
+                        do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+        }
+	gc_ctx.has_victim = false;
+	gc_ctx.latest_seg = 0;
+#else
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);
-
+#endif
 	if (gc_type == FG_GC) {
 		sbi->cur_victim_sec = NULL_SEGNO;
 		nfree++;
@@ -817,11 +847,10 @@ gc_more:
 	}
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-	gc_sec_time_end = get_current_utime();
-	if(block_copy_index < max_block_copy_index){
+        gc_sec_time_end = get_current_utime();
+        if(block_copy_index < max_block_copy_index){
                 gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
         }
-	
 #endif
 
 	if (has_not_enough_free_secs(sbi, nfree))
@@ -829,10 +858,10 @@ gc_more:
 
 	if (gc_type == FG_GC)
 		write_checkpoint(sbi, &cpc);
-
+preemption:
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-	gc_total_time_end = get_current_utime();
-	if(block_copy_index < max_block_copy_index){
+        gc_total_time_end = get_current_utime();
+        if(block_copy_index < max_block_copy_index){
                 gc_total_latency[block_copy_index-1] = gc_total_time_end - gc_total_time_start;
         }
 #endif

@@ -8,22 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
-/*
- * Unified Storage Layer
- *
- * Copyright(c)2015
- * Hanyang University, Seoul, Korea
- * Embedded Software Systems Laboratory. All right reserved
- *
- * File: fs/f2fs/node.c
- * Author:
- *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
- *   Joontaek Oh (na94jun@gmail.com)
- *
- * History
- */
-
 #include <linux/fs.h>
 #include <linux/f2fs_fs.h>
 #include <linux/mpage.h>
@@ -1001,10 +985,6 @@ static int read_node_page(struct page *page, int rw)
 		return -ENOENT;
 	}
 
-#ifdef F2FS_DA_MAP_DBG
-//	printk("[JS DBG] read node of %p from blk %d\n", page, ni.blk_addr);
-#endif
-
 	if (PageUptodate(page))
 		return LOCKED_PAGE;
 
@@ -1041,23 +1021,8 @@ struct page *get_node_page(struct f2fs_sb_info *sbi, pgoff_t nid)
 {
 	struct page *page;
 	int err;
-
-#ifdef F2FS_DA_MAP
-	pgoff_t temp_nid = nid;
-#endif
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-	struct f2fs_node *rn;
-#endif
-
 repeat:
-
-#ifdef F2FS_DA_MAP
-	page = grab_cache_page(NODE_MAPPING(sbi), temp_nid);
-#else
 	page = grab_cache_page(NODE_MAPPING(sbi), nid);
-#endif
-
 	if (!page)
 		return ERR_PTR(-ENOMEM);
 
@@ -1068,27 +1033,7 @@ repeat:
 		goto got_it;
 
 	lock_page(page);
-
-#ifdef F2FS_DA_MAP
-	if(nid_of_node(page) == -1){
-
-//	#ifdef F2FS_DA_MAP_DBG
-		printk("[get_node] nid_of_page is -1, goto repeat [nid: %lu]\n", temp_nid);
-//	#endif
-		temp_nid++;
-		f2fs_put_page(page, 1);
-		goto repeat;
-	}
-#endif
-
 	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
-//TEMP
-#ifdef F2FS_DA_MAP_DBG
-		printk("[get_node] here 3. %d %lu %d %p\n", PageUptodate(page), nid, nid_of_node(page), page);
-		rn = F2FS_NODE(page);
-		printk("[get_node] here 3-1. %d %d %d\n", rn->footer.ino, rn->footer.cp_ver, rn->footer.next_blkaddr);
-#endif
-
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
@@ -1272,10 +1217,8 @@ continue_unlock:
 		goto next_step;
 	}
 
-	if (wrote){
+	if (wrote)
 		f2fs_submit_merged_bio(sbi, NODE, WRITE);
-	}
-
 	return nwritten;
 }
 
@@ -1333,11 +1276,6 @@ static int f2fs_write_node_page(struct page *page,
 		.rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE,
 	};
 
-#ifdef F2FS_DA_MAP
-	if(F2FS_PLUG_ON == true)
-		fio.rw = WRITE_SYNC;
-#endif
-
 	trace_f2fs_writepage(page, NODE);
 
 	if (unlikely(sbi->por_doing))
@@ -1349,7 +1287,6 @@ static int f2fs_write_node_page(struct page *page,
 
 	/* get old block addr of this node page */
 	nid = nid_of_node(page);
-
 	f2fs_bug_on(sbi, page->index != nid);
 
 	get_node_info(sbi, nid, &ni);
@@ -1363,6 +1300,7 @@ static int f2fs_write_node_page(struct page *page,
 
 	if (wbc->for_reclaim)
 		goto redirty_out;
+
 	down_read(&sbi->node_write);
 	set_page_writeback(page);
 	write_node_page(sbi, page, &fio, nid, ni.blk_addr, &new_addr);
@@ -1393,9 +1331,7 @@ static int f2fs_write_node_pages(struct address_space *mapping,
 		goto skip_write;
 
 	diff = nr_pages_to_write(sbi, NODE, wbc);
-
 	wbc->sync_mode = WB_SYNC_NONE;
-
 	sync_node_pages(sbi, 0, wbc);
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
 	return 0;
@@ -1798,11 +1734,7 @@ static int ra_sum_pages(struct f2fs_sb_info *sbi, struct page **pages,
 		pages[i] = grab_cache_page(mapping, page_idx);
 		if (!pages[i])
 			break;
-#ifdef F2FS_DA_MAP
-		f2fs_submit_page_mbio(sbi, pages[i], page_idx, &fio, NULL);
-#else
 		f2fs_submit_page_mbio(sbi, pages[i], page_idx, &fio);
-#endif
 	}
 
 	f2fs_submit_merged_bio(sbi, META, READ);

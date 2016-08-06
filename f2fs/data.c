@@ -8,22 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
-/*
- * Unified Storage Layer
- *
- * Copyright(c)2015
- * Hanyang University, Seoul, Korea
- * Embedded Software Systems Laboratory. All right reserved
- *
- * File: fs/f2fs/data.c
- * Author:
- *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
- *   Joontaek Oh (na94jun@gmail.com)
- *
- * History
- */
-
 #include <linux/fs.h>
 #include <linux/f2fs_fs.h>
 #include <linux/buffer_head.h>
@@ -39,7 +23,6 @@
 #include "node.h"
 #include "segment.h"
 #include <trace/events/f2fs.h>
-
 
 static void f2fs_read_end_io(struct bio *bio, int err)
 {
@@ -66,15 +49,6 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 	struct bio_vec *bvec;
 	int i;
 
-#ifdef F2FS_DA_MAP
-	struct page* dummy_page = NULL;
-	bool is_dummy_bio = false;
-	if(unlikely(bio->bi_max_vecs == BIO_MAX_W_DUMMY)){
-		is_dummy_bio = true;
-		bio->bi_max_vecs--;
-	}
-#endif
-
 	bio_for_each_segment_all(bvec, bio, i) {
 		struct page *page = bvec->bv_page;
 
@@ -85,22 +59,7 @@ static void f2fs_write_end_io(struct bio *bio, int err)
 		}
 		end_page_writeback(page);
 		dec_page_count(sbi, F2FS_WRITEBACK);
-
-#ifdef F2FS_DA_MAP
-		/* Get the last page */
-		dummy_page = page;
-#endif
 	}
-
-#ifdef F2FS_DA_MAP
-	/* If the bio has dummy page, release it  */
-	if(unlikely(is_dummy_bio)){
-		if(dummy_page != NULL)
-			page_cache_release(dummy_page);
-		else
-			printk("ERROR[f2fs_write_end_io] dummy_page has NULL pointer.\n");
-	}
-#endif
 
 	if (sbi->wait_io) {
 		complete(sbi->wait_io);
@@ -133,229 +92,10 @@ static struct bio *__bio_alloc(struct f2fs_sb_info *sbi, block_t blk_addr,
 	return bio;
 }
 
-#ifdef F2FS_DA_MAP
-/*
- * 15.02.16. Jinsoo Yoo - Hanyang University
- * F2FS for DA Map have to make 8KByte aligned write request to main area.
- * f2fs_need_dummy_page() checks that an IO needs a dummy page before
- * it send to block I/O Layer.
- * return:
- * 	true - The write request need a dummy page.
- *	false - The number of IO pages is even or not for main area.
- */
-static bool f2fs_need_dummy_page(struct f2fs_bio_info *io)
-{
-	int last_block_in_bio;
-	int last_block_offset;
-	int n_blocks;
-	int start_block_in_bio;
-	struct f2fs_sb_info *sbi;
-
-	/* Check if bio has NULL pointer */
-	if(!io->bio){
-		printk("ERROR[f2fs_need_dummy_page] bio is NULL\n");
-		return false;
-	}
-	sbi = io->sbi;
-
-	/* Get the number of IO pages */
-	n_blocks = io->bio->bi_vcnt;
-
-	/* Calculate start block address */
-	last_block_in_bio = io->last_block_in_bio;
-	last_block_offset = last_block_in_bio % 4096;
-	start_block_in_bio = last_block_in_bio - n_blocks + 1;
-
-	/* If the block address is in Main area of F2FS
-	 * and the number of IO pages is odd, 
-	 * dummy page is needed. */
-	if((start_block_in_bio >= MAIN_BLKADDR(sbi))
-		&& (start_block_in_bio < MAX_BLKADDR(sbi))
-		&& (n_blocks % N_PAGE_ALIGN != 0)){
-
-		return true;
-	}
-
-	return false;
-}
-
-static struct curseg_info *da_get_curseg_i(struct f2fs_bio_info *io, int* type)
-{
-	struct curseg_info *temp_curseg;
-	struct f2fs_sb_info *sbi = io->sbi;
-
-	int i;
-
-	block_t	next_blkaddr;
-	block_t last_block_in_bio = io->last_block_in_bio;
-
-#ifdef F2FS_DA_MAP_DBG
-	printk("    [JS DBG] da_get_curseg_i, blkaddr: %d\n", last_block_in_bio);
-#endif
-	for(i = 0; i< NR_CURSEG_TYPE; i++){
-		temp_curseg = CURSEG_I(sbi, i);
-		next_blkaddr = NEXT_FREE_BLKADDR(sbi, temp_curseg);
-
-#ifdef F2FS_DA_MAP_DBG
-	printk("    [JS DBG] da_get_curseg_i, next: blkaddr[%d] %d\n",i, next_blkaddr);
-#endif
-		if(last_block_in_bio == next_blkaddr - 1){
-			*type = i;
-			return temp_curseg;
-		}
-	}
-
-	return NULL;
-}
-
-/*
- * 15.02.16. Jinsoo Yoo - Hanyang University
- * Add a dummy page to a bio and make the number of IO pages
- * even. This function allocate new block address for the dummy
- * page, but the sit state for the page become invalid immediately.
- * io->io_rwsem is alleady locked before this function is called.
- */
-static void f2fs_bio_add_dummy_page(struct f2fs_bio_info *io)
-{
-	struct sit_info *sit_i;
-	struct page *new_page = NULL;
-	struct bio* p_bio;
-	struct address_space* mapping;
-	struct curseg_info *curseg;
-	struct f2fs_sb_info *sbi;
-
-        struct f2fs_node *rn;
-	//struct f2fs_summary sum;
-
-	struct page *last_page;
-	block_t new_blkaddr;
-
-	int type;
-	int vcnt;
-
-	sbi = io->sbi;
-	p_bio = io->bio;
-	vcnt = p_bio->bi_vcnt;
-
-	/* Get address space of the bio */
-	last_page = p_bio->bi_io_vec[vcnt-1].bv_page;
-
-	mapping = last_page->mapping;
-	if(mapping == NULL){
-		printk("ERROR[f2fs_bio_add_dummy_page] mapping is NULL!\n");
-		return;
-	}
-
-	/* Get new page (need modification) */
-repeat:
-	new_page = page_cache_alloc(mapping);
-	if(!new_page){
-		cond_resched();
-		goto repeat;
-	}
-
-	set_page_writeback(new_page);
-	inc_page_count(sbi, F2FS_WRITEBACK);
-
-	unlock_page(new_page);
-
-	/* Add dummy page to the bio structe */
-	if(vcnt == MAX_BIO_BLOCKS(sbi)){
-		printk("ERROR[f2fs_bio_add_dummy_page] bio is full\n");
-		f2fs_put_page(new_page, 0);
-		return;
-	}
-	bio_add_page(p_bio, new_page, PAGE_CACHE_SIZE, 0);
-
-	/* Marking as dummy bio */
-	p_bio->bi_max_vecs++;
-
-	/* Update CURSEG_I */
-	sit_i = SIT_I(sbi);
-
-	/* Get new block address & increase it */
-	curseg = da_get_curseg_i(io, &type);
-	if(curseg == NULL){
-		printk("ERROR[f2fs_bio_add_dummy_page] curseg return NULL\n");
-		f2fs_put_page(new_page, 0);
-		return;
-	}
-
-	/* Lock curseg mutext */
-	mutex_lock(&curseg->curseg_mutex);
-
-	new_blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
-
-#ifdef F2FS_DA_MAP_DBG
-	printk("    [JS DBG] add dummy to blkaddr %d\n", new_blkaddr);
-#endif
-
-	/* Lock sit_i mutext */
-	mutex_lock(&sit_i->sentry_lock);
-
-	/* Move next block offset */
-	__refresh_next_blkoff(sbi, curseg);
-
-	/* Increse block counter in sbi struct */
-	stat_inc_block_count(sbi, curseg);
-
-	/* If needed, allocate new segment to curseg */
-	if (!__has_curseg_space(sbi, type))
-		sit_i->s_ops->allocate_segment(sbi, type, false);
-
-	/* Invalid sit entry for the dummy block address */
-	update_sit_entry(sbi, new_blkaddr, 1);
-	update_sit_entry(sbi, new_blkaddr, -1);
-	locate_dirty_segment(sbi, GET_SEGNO(sbi, new_blkaddr));
-
-	/* Unlock sit_i mutex */
-	mutex_unlock(&sit_i->sentry_lock);
-
-	/* Update footer of NODE PAGE */
-	if (new_page && IS_NODESEG(type)){
-	        rn = F2FS_NODE(last_page);
-		if((rn != NULL) && (new_blkaddr == rn->footer.next_blkaddr))
-			fill_node_footer_blkaddr(last_page, NEXT_FREE_BLKADDR(sbi, curseg));
-
-		rn = F2FS_NODE(new_page);
-		rn->footer.nid = -1;
-	}
-
-	/* Unlock curseg mutex */
-	mutex_unlock(&curseg->curseg_mutex);
-
-	/* Update a variable of io struct */
-	io->last_block_in_bio = new_blkaddr;
-
-#ifdef F2FS_GET_FS_WAF
-	dummy_page_count++;
-#endif
-}
-#endif
-
-/*
- * 15.02.06 Jinsoo Yoo - Hanyang University
- * Before sending an IO to block I/O Layer,
- * This function checks the bio needs a dummy page.
- * If it is needed, add dummy page to bio by calling
- * f2fs_bio_add_dummy_page().
- */
 static void __submit_merged_bio(struct f2fs_bio_info *io)
 {
 	struct f2fs_io_info *fio = &io->fio;
 	int rw;
-
-#ifdef F2FS_DA_MAP
-	bool need_dummy_page = false;
-#endif
-#ifdef F2FS_GET_FS_WORKLOAD
-	int last_block_in_bio;
-	int n_blocks;
-	int start_block_in_bio;
-	int type = -1;
-	struct curseg_info *curseg;	
-	curseg = da_get_curseg_i(io, &type);
-#endif
 
 	if (!io->bio)
 		return;
@@ -368,17 +108,7 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 		submit_bio(rw, io->bio);
 	} else {
 		trace_f2fs_submit_write_bio(io->sbi->sb, rw,
-							fio->type, io->bio);
-
-#ifdef F2FS_DA_MAP
-		/* Check if the bio need dummy page write */
-		need_dummy_page = f2fs_need_dummy_page(io);
-		if(need_dummy_page == true)
-		{
-			/* Add dummy page to the bio */
-			f2fs_bio_add_dummy_page(io);
-		}
-#endif
+						fio->type, io->bio);
 		/*
 		 * META_FLUSH is only from the checkpoint procedure, and we
 		 * should wait this metadata bio for FS consistency.
@@ -393,21 +123,10 @@ static void __submit_merged_bio(struct f2fs_bio_info *io)
 		}
 	}
 
-#ifdef F2FS_GET_FS_WORKLOAD
-	/* Get the number of IO pages */
-	n_blocks = io->bio->bi_vcnt;
-
-	/* Calculate start block address */
-	last_block_in_bio = io->last_block_in_bio;
-	start_block_in_bio = last_block_in_bio - n_blocks + 1;
-
-	printk("N\t%d\t%d\t%d\t%d\n", start_block_in_bio, n_blocks, type, current->pid);
-#endif
-
 #ifdef F2FS_GET_FS_WAF
-	if(!is_read_io(fio->rw)){
-		len_fs_write += io->bio->bi_vcnt * 4096;
-	}
+        if(!is_read_io(fio->rw)){
+                len_fs_write += io->bio->bi_vcnt * 4096;
+        }
 #endif
 
 	io->bio = NULL;
@@ -431,7 +150,6 @@ void f2fs_submit_merged_bio(struct f2fs_sb_info *sbi,
 		else
 			io->fio.rw = WRITE_FLUSH_FUA | REQ_META | REQ_PRIO;
 	}
-
 	__submit_merged_bio(io);
 	up_write(&io->io_rwsem);
 }
@@ -457,30 +175,23 @@ int f2fs_submit_page_bio(struct f2fs_sb_info *sbi, struct page *page,
 	}
 
 #ifdef F2FS_GET_FS_WAF
-        if(!is_read_io(rw)){
+        if(!is_read_io(rw))
+	{
                 len_fs_write += bio->bi_vcnt * 4096;
-	}
+        }
 #endif
 
 	submit_bio(rw, bio);
 	return 0;
 }
 
-#ifdef F2FS_DA_MAP
-void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
-			block_t blk_addr, struct f2fs_io_info *fio, struct f2fs_da_io_info* dio)
-#else
 void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 			block_t blk_addr, struct f2fs_io_info *fio)
-#endif
 {
 	enum page_type btype = PAGE_TYPE_OF_BIO(fio->type);
 	struct f2fs_bio_info *io;
 	bool is_read = is_read_io(fio->rw);
 
-#ifdef F2FS_DA_MAP
-	bool bio_was_full = false;
-#endif
 	io = is_read ? &sbi->read_io : &sbi->write_io[btype];
 
 	verify_block_addr(sbi, blk_addr);
@@ -491,21 +202,9 @@ void f2fs_submit_page_mbio(struct f2fs_sb_info *sbi, struct page *page,
 		inc_page_count(sbi, F2FS_WRITEBACK);
 
 	if (io->bio && (io->last_block_in_bio != blk_addr - 1 ||
-						io->fio.rw != fio->rw)){
+						io->fio.rw != fio->rw))
 		__submit_merged_bio(io);
-	}
-
 alloc_new:
-#ifdef F2FS_DA_MAP
-	if((dio != NULL) && (!bio_was_full) && !is_read){
-		allocate_data_block(sbi, page, dio->old_blkaddr, &blk_addr, dio->sum, dio->type);
-		dio->old_blkaddr = blk_addr;
-	#ifdef F2FS_DA_MAP_DBG
-		printk("    [JS DBG] f2fs_submit_page_mbio, new blkaddr: %d\n", blk_addr);
-	#endif
-	}
-#endif
-
 	if (io->bio == NULL) {
 		int bio_blocks = MAX_BIO_BLOCKS(sbi);
 
@@ -516,10 +215,6 @@ alloc_new:
 	if (bio_add_page(io->bio, page, PAGE_CACHE_SIZE, 0) <
 							PAGE_CACHE_SIZE) {
 		__submit_merged_bio(io);
-#ifdef F2FS_DA_MAP
-		bio_was_full = true;
-#endif
-
 		goto alloc_new;
 	}
 
@@ -641,7 +336,7 @@ void update_extent_cache(block_t blk_addr, struct dnode_of_data *dn)
 
 	f2fs_bug_on(F2FS_I_SB(dn->inode), blk_addr == NEW_ADDR);
 	fofs = start_bidx_of_node(ofs_of_node(dn->node_page), fi) +
-								dn->ofs_in_node;
+							dn->ofs_in_node;
 
 	/* Update the page address in the parent node */
 	__set_data_blkaddr(dn, blk_addr);
@@ -774,11 +469,7 @@ struct page *get_lock_data_page(struct inode *inode, pgoff_t index)
 	int err;
 
 repeat:
-//TEMP I added code about grab_cache_page_flag at 2016. 01. 20 by JT
-	//set_grab_cache_page_flag(true);
 	page = grab_cache_page(mapping, index);
-	//set_grab_cache_page_flag(false);
-
 	if (!page)
 		return ERR_PTR(-ENOMEM);
 
@@ -811,7 +502,7 @@ repeat:
 	}
 
 	err = f2fs_submit_page_bio(F2FS_I_SB(inode), page,
-						dn.data_blkaddr, READ_SYNC);
+					dn.data_blkaddr, READ_SYNC);
 	if (err)
 		return ERR_PTR(err);
 
@@ -861,9 +552,8 @@ repeat:
 		zero_user_segment(page, 0, PAGE_CACHE_SIZE);
 		SetPageUptodate(page);
 	} else {
-
 		err = f2fs_submit_page_bio(F2FS_I_SB(inode), page,
-							dn.data_blkaddr, READ_SYNC);
+						dn.data_blkaddr, READ_SYNC);
 		if (err)
 			goto put_err;
 
@@ -924,7 +614,7 @@ static int __allocate_data_block(struct dnode_of_data *dn)
 
 	/* update i_size */
 	fofs = start_bidx_of_node(ofs_of_node(dn->node_page), fi) +
-								dn->ofs_in_node;
+							dn->ofs_in_node;
 	if (i_size_read(dn->inode) < ((fofs + 1) << PAGE_CACHE_SHIFT))
 		i_size_write(dn->inode, ((fofs + 1) << PAGE_CACHE_SHIFT));
 
@@ -1135,7 +825,7 @@ static int f2fs_write_data_page(struct page *page,
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	loff_t i_size = i_size_read(inode);
 	const pgoff_t end_index = ((unsigned long long) i_size)
-								>> PAGE_CACHE_SHIFT;
+							>> PAGE_CACHE_SHIFT;
 	unsigned offset = 0;
 	bool need_balance_fs = false;
 	int err = 0;
@@ -1221,6 +911,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 {
 	struct inode *inode = mapping->host;
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+// TEMP
 //	bool locked = false;
 	int ret;
 	long diff;
@@ -1238,7 +929,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 
 	diff = nr_pages_to_write(sbi, DATA, wbc);
 
-/*
+/* TEMP
 	if (!S_ISDIR(inode->i_mode)) {
 		mutex_lock(&sbi->writepages);
 		locked = true;
@@ -1246,21 +937,23 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 */
 	ret = write_cache_pages(mapping, wbc, __f2fs_writepage, mapping);
 
-/*
-	if (locked)
-	if (sbi->writepages.owner != current)
+/* TEMP
+	if(sbi->writepages.owner == current)
+	if(locked || sbi->writepages.owner == current)
+	if (locked){
 		mutex_unlock(&sbi->writepages);
 */
-
 	f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
 	remove_dirty_dir_inode(inode);
 
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
+
 	return ret;
 
 skip_write:
 	wbc->pages_skipped += get_dirty_pages(inode);
+
 	return 0;
 }
 
@@ -1288,15 +981,24 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	trace_f2fs_write_begin(inode, pos, len, flags);
 
 #ifdef F2FS_GET_FS_WAF
-	len_user_data += len;
+        len_user_data += len;
 #endif
 
+#ifdef F2FS_DA_QPGC
+        if (has_not_enough_free_secs(sbi, 0) == 2)
+        {
+                mutex_lock(&sbi->gc_mutex);
+                f2fs_gc(sbi);
+        }
+#else
 	f2fs_balance_fs(sbi);
+#endif
+
 repeat:
 	err = f2fs_convert_inline_data(inode, pos + len, NULL);
 	if (err)
 		goto fail;
-	
+
 	page = grab_cache_page_write_begin(mapping, index, flags);
 	if (!page) {
 		err = -ENOMEM;
@@ -1315,7 +1017,6 @@ repeat:
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
 	err = f2fs_reserve_block(&dn, index);
 	f2fs_unlock_op(sbi);
-
 	if (err) {
 		f2fs_put_page(page, 0);
 		goto fail;
@@ -1345,14 +1046,12 @@ inline_data:
 		zero_user_segment(page, 0, PAGE_CACHE_SIZE);
 	} else {
 		if (f2fs_has_inline_data(inode)) {
-
 			err = f2fs_read_inline_data(inode, page);
 			if (err) {
 				page_cache_release(page);
 				goto fail;
 			}
 		} else {
-
 			err = f2fs_submit_page_bio(sbi, page, dn.data_blkaddr,
 							READ_SYNC);
 			if (err)

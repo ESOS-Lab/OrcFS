@@ -82,10 +82,7 @@ subdir = lib
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/build-aux/depcomp
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -192,14 +189,14 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /home/jedisty/F2FS/f2fs-tools/build-aux/missing aclocal-1.14
+ACLOCAL = ${SHELL} /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/build-aux/missing aclocal-1.14
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
 AR = ar
-AUTOCONF = ${SHELL} /home/jedisty/F2FS/f2fs-tools/build-aux/missing autoconf
-AUTOHEADER = ${SHELL} /home/jedisty/F2FS/f2fs-tools/build-aux/missing autoheader
-AUTOMAKE = ${SHELL} /home/jedisty/F2FS/f2fs-tools/build-aux/missing automake-1.14
-AWK = mawk
+AUTOCONF = ${SHELL} /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/build-aux/missing autoconf
+AUTOHEADER = ${SHELL} /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/build-aux/missing autoheader
+AUTOMAKE = ${SHELL} /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/build-aux/missing automake-1.14
+AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -g -O2
@@ -232,7 +229,7 @@ LIBTOOL = $(SHELL) $(top_builddir)/libtool
 LIPO = 
 LN_S = ln -s
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /home/jedisty/F2FS/f2fs-tools/build-aux/missing makeinfo
+MAKEINFO = ${SHELL} /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/build-aux/missing makeinfo
 MANIFEST_TOOL = :
 MKDIR_P = /bin/mkdir -p
 NM = /usr/bin/nm -B
@@ -258,10 +255,10 @@ SET_MAKE =
 SHELL = /bin/bash
 STRIP = strip
 VERSION = 1.4.0
-abs_builddir = /home/jedisty/F2FS/f2fs-tools/lib
-abs_srcdir = /home/jedisty/F2FS/f2fs-tools/lib
-abs_top_builddir = /home/jedisty/F2FS/f2fs-tools
-abs_top_srcdir = /home/jedisty/F2FS/f2fs-tools
+abs_builddir = /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/lib
+abs_srcdir = /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/lib
+abs_top_builddir = /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools
+abs_top_srcdir = /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools
 ac_ct_AR = ar
 ac_ct_CC = gcc
 ac_ct_DUMPBIN = 
@@ -290,7 +287,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/jedisty/F2FS/f2fs-tools/build-aux/install-sh
+install_sh = ${SHELL} /home/jedisty/F2FS/F2FS_rainbow/f2fs-tools/build-aux/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 libuuid_CFLAGS = -I/usr/include/uuid  

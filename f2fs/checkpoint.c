@@ -8,22 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
-/*
- * Unified Storage Layer
- *
- * Copyright(c)2015
- * Hanyang University, Seoul, Korea
- * Embedded Software Systems Laboratory. All right reserved
- *
- * File: fs/f2fs/checkpoint.c
- * Author:
- *   Jinsoo Yoo (jedisty@hanyang.ac.kr)
- *   Joontaek Oh (na94jun@gmail.com)
- *
- * History
- */
-
 #include <linux/fs.h>
 #include <linux/bio.h>
 #include <linux/mpage.h>
@@ -177,11 +161,7 @@ int ra_meta_pages(struct f2fs_sb_info *sbi, block_t start, int nrpages, int type
 			continue;
 		}
 
-#ifdef F2FS_DA_MAP
-		f2fs_submit_page_mbio(sbi, page, blk_addr, &fio, NULL);
-#else
 		f2fs_submit_page_mbio(sbi, page, blk_addr, &fio);
-#endif
 		f2fs_put_page(page, 0);
 	}
 out:
@@ -604,7 +584,6 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	 * Finding out valid cp block involves read both
 	 * sets( cp pack1 and cp pack 2)
 	 */
-
 	cp_start_blk_no = le32_to_cpu(fsb->cp_blkaddr);
 	cp1 = validate_checkpoint(sbi, cp_start_blk_no, &cp1_version);
 
@@ -751,7 +730,6 @@ void sync_dirty_dir_inodes(struct f2fs_sb_info *sbi)
 	struct list_head *head;
 	struct dir_inode_entry *entry;
 	struct inode *inode;
-
 retry:
 	spin_lock(&sbi->dir_inode_lock);
 
@@ -791,10 +769,6 @@ static int block_operations(struct f2fs_sb_info *sbi)
 
 	blk_start_plug(&plug);
 
-#ifdef F2FS_DA_MAP
-	F2FS_PLUG_ON = true;
-#endif
-
 retry_flush_dents:
 	f2fs_lock_all(sbi);
 	/* write all the dirty dentry pages */
@@ -826,13 +800,7 @@ retry_flush_nodes:
 		goto retry_flush_nodes;
 	}
 out:
-
-#ifdef F2FS_DA_MAP
-	F2FS_PLUG_ON = false;
-#endif
-
 	blk_finish_plug(&plug);
-
 	return err;
 }
 
@@ -854,7 +822,6 @@ static void wait_on_all_pages_writeback(struct f2fs_sb_info *sbi)
 
 		io_schedule();
 	}
-
 	finish_wait(&sbi->cp_wait, &wait);
 }
 
