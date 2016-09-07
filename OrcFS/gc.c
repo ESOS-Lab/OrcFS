@@ -727,8 +727,10 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 #ifdef F2FS_DA_QPGC
 	struct list_head *b_io = &sbi->sb->s_bdi->wb.b_io;
 	static struct gc_context gc_ctx = {
+		.has_victim = 0,
                 .latest_seg = 0,
         };
+	long long start_time_gc;
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 	struct list_head *b_dirty = &sbi->sb->s_bdi->wb.b_dirty;
 	struct list_head *b_more_io = &sbi->sb->s_bdi->wb.b_more_io;
@@ -748,7 +750,9 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 	gc_total_time_start = get_current_utime();
 #endif
 
-
+#ifdef F2FS_DA_QPGC
+	start_time_gc = get_current_utime();
+#endif
 	INIT_LIST_HEAD(&ilist);
 gc_more:
 	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
@@ -803,6 +807,7 @@ gc_more:
 			gc_cp_latency[i] = 0;
 			gc_type_info[i] = 0;
 #ifdef F2FS_DA_QPGC
+			block_copy_remain[i] = 0;
 			gc_preemption_info[i] = 0;
 			gc_n_bio[i] = 0;
 			gc_n_bdirty[i] = 0;
@@ -849,8 +854,6 @@ gc_more:
 #endif
 
 #ifdef F2FS_DA_QPGC
-	if (gc_type == BG_GC && !is_soft_threshold)
-		is_soft_threshold = true;
 	/*
 		If current state is soft gc, it can be preempt.
 		However, If current state is hard gc, it can't be preempt.
@@ -858,80 +861,40 @@ gc_more:
 		Both of them start from next segment number of segment that has
 		cleaned before gc is preempted.
 	*/
-	if (is_soft_threshold) {
-		for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec; i++) {
-			do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
-
-			/* Check whether thers is an pending host I/O */
-			if (!list_empty(b_io) && i != (sbi->segs_per_sec - 1)) {
-				gc_ctx.latest_seg = i + 1;
-#ifdef F2FS_GET_BLOCK_COPY_INFO
-				bio_count = 0;
-				bdirty_count = 0;
-				moreio_count = 0;
-				temp_lh = NULL;
-
-				list_for_each(temp_lh ,b_io){
-					bio_count++;
-				}
-				list_for_each(temp_lh ,b_dirty){
-					bdirty_count++;
-				}
-				list_for_each(temp_lh ,b_more_io){
-					moreio_count++;
-				}
-				gc_preemption_info[block_copy_index - 1] = 1;
-				gc_n_bio[block_copy_index - 1] = bio_count;
-				gc_n_bdirty[block_copy_index - 1] = bdirty_count;
-				gc_n_moreio[block_copy_index - 1] = moreio_count;
-
-				/* Save the section cleaning latency */
-				gc_sec_time_end = get_current_utime();
-				if(block_copy_index < max_block_copy_index){
-					gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
-        			}
-#endif
-				goto preemption;
-			}
-		}
-	}
-	else {
-		for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec; i++)
-		{
-			do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
-			if (!(i%N_SEGS_FOR_PREEMPTION) && !list_empty(b_io))
-			{
-				gc_ctx.latest_seg = i + 1;
+	for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec; i++){
+		do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
+		if (100000 <= (get_current_utime()-start_time_gc) && (!list_empty(b_io))){
+			gc_ctx.latest_seg = i + 1;
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-				bio_count = 0;
-				bdirty_count = 0;
-				moreio_count = 0;
-				temp_lh = NULL;
+			bio_count = 0;
+			bdirty_count = 0;
+			moreio_count = 0;
+			temp_lh = NULL;
 
-				list_for_each(temp_lh ,b_io){
-					bio_count++;
-				}
-				list_for_each(temp_lh ,b_dirty){
-					bdirty_count++;
-				}
-				list_for_each(temp_lh ,b_more_io){
-					moreio_count++;
-				}
+			list_for_each(temp_lh ,b_io){
+				bio_count++;
+			}
+			list_for_each(temp_lh ,b_dirty){
+				bdirty_count++;
+			}
+			list_for_each(temp_lh ,b_more_io){
+				moreio_count++;
+			}
 
-				gc_preemption_info[block_copy_index - 1] = 2;
-				gc_n_bio[block_copy_index - 1] = bio_count;
-				gc_n_bdirty[block_copy_index - 1] = bdirty_count;
-				gc_n_moreio[block_copy_index - 1] = moreio_count;
+			gc_preemption_info[block_copy_index - 1] = 2;
+			gc_n_bio[block_copy_index - 1] = bio_count;
+			gc_n_bdirty[block_copy_index - 1] = bdirty_count;
+			gc_n_moreio[block_copy_index - 1] = moreio_count;
 
-				/* Save the section cleaning latency */
-				gc_sec_time_end = get_current_utime();
-				if(block_copy_index < max_block_copy_index){
-					gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
-        			}
+			/* Save the section cleaning latency */
+			gc_sec_time_end = get_current_utime();
+			if(block_copy_index < max_block_copy_index){
+				gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
+				block_copy_remain[block_copy_index-1] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
+        		}
 #endif
 				goto preemption;
-			}
 		}
 	}
 	gc_ctx.has_victim = false;
@@ -970,37 +933,14 @@ gc_more:
                 gc_n_bio[block_copy_index-1] = bio_count;
                 gc_n_bdirty[block_copy_index-1] = bdirty_count;
 		gc_n_moreio[block_copy_index-1] = moreio_count;
+		block_copy_remain[block_copy_index-1] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
+	}
 #endif
-        }
 #endif
 
-#ifdef F2FS_DA_QPGC
-	switch (has_not_enough_free_secs(sbi, nfree)) {
-	case 1:
-		if (!is_soft_threshold) {
-#ifdef F2FS_GET_BLOCK_COPY_INFO
-			gc_cp_time_start = get_current_utime();
-#endif
-			write_checkpoint(sbi, &cpc);
-#ifdef F2FS_GET_BLOCK_COPY_INFO
-			gc_cp_time_end = get_current_utime();
-			gc_cp_latency[block_copy_index-1] = gc_cp_time_end - gc_cp_time_start;
-#endif
-			is_soft_threshold = true;
-		}
-		goto gc_more;
-	case 2:
-		if (is_soft_threshold) {
-			is_soft_threshold = false;
-		}
-		goto gc_more;
-	default:
-		break;
-	}
-#else
 	if (has_not_enough_free_secs(sbi, nfree))
 		goto gc_more;
-#endif
+
 	if (gc_type == FG_GC)
 	{
 #ifdef F2FS_GET_BLOCK_COPY_INFO

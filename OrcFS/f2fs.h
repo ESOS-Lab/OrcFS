@@ -23,9 +23,8 @@
 /* Define for Disaggregate Mapping - Jinsoo, 150401 */
 #define F2FS_DA_MAP
 
-/* Defien for Quasi Preemptive GC - Joontaek Oh, 160720 */
+/* Define for Quasi Preemptive GC - Joontaek Oh, 160720 */
 #define F2FS_DA_QPGC
-//#define N_SEGS_FOR_PREEMPTION	32
 #define N_SEGS_FOR_PREEMPTION	16
 #define MIN_SECTIONS_HARD_THRESHOLD	6
 

@@ -911,8 +911,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 {
 	struct inode *inode = mapping->host;
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-// TEMP
-//	bool locked = false;
+	bool locked = false;
 	int ret;
 	long diff;
 
@@ -929,31 +928,23 @@ static int f2fs_write_data_pages(struct address_space *mapping,
 
 	diff = nr_pages_to_write(sbi, DATA, wbc);
 
-/* TEMP
 	if (!S_ISDIR(inode->i_mode)) {
 		mutex_lock(&sbi->writepages);
 		locked = true;
 	}
-*/
 	ret = write_cache_pages(mapping, wbc, __f2fs_writepage, mapping);
-
-/* TEMP
-	if(sbi->writepages.owner == current)
-	if(locked || sbi->writepages.owner == current)
-	if (locked){
+	if (locked)
 		mutex_unlock(&sbi->writepages);
-*/
+
 	f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
 	remove_dirty_dir_inode(inode);
 
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
-
 	return ret;
 
 skip_write:
 	wbc->pages_skipped += get_dirty_pages(inode);
-
 	return 0;
 }
 
@@ -984,15 +975,7 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
         len_user_data += len;
 #endif
 
-#ifdef F2FS_DA_QPGC
-        if (has_not_enough_free_secs(sbi, 0) == 2)
-        {
-                mutex_lock(&sbi->gc_mutex);
-                f2fs_gc(sbi);
-        }
-#else
 	f2fs_balance_fs(sbi);
-#endif
 
 repeat:
 	err = f2fs_convert_inline_data(inode, pos + len, NULL);

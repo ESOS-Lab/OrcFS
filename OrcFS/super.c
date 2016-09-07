@@ -461,6 +461,7 @@ static void f2fs_put_super(struct super_block *sb)
 		kfree(gc_cp_latency);
 		kfree(gc_type_info);
 #ifdef F2FS_DA_QPGC
+		kfree(block_copy_remain);
 		kfree(gc_preemption_info);
 		kfree(gc_n_bio);
 		kfree(gc_n_bdirty);
@@ -689,9 +690,9 @@ static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
         int i;
 
 #ifdef F2FS_DA_QPGC
-	seq_printf(seq, "n_blks\tsec_no\tn_free\tsectyp\tn_node\tseclat\tcp_lat\ttotlat\tgc_type\tprempt\tbio\tbdirty\tbmoreio\n");
+	seq_printf(seq, "n_blks\tn_rema\tsec_no\tn_free\tsectyp\tn_node\tseclat\tcp_lat\ttotlat\tgc_type\tprempt\tbio\tbdirty\tbmoreio\n");
 	for(i=0; i<block_copy_index; i++){
-		seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%lld\t%d\t%d\t%d\t%d\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_cp_latency[i], gc_total_latency[i], gc_type_info[i], gc_preemption_info[i], gc_n_bio[i], gc_n_bdirty[i], gc_n_moreio[i]);
+		seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%lld\t%d\t%d\t%d\t%d\t%d\n", block_copy[i], block_copy_remain[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_cp_latency[i], gc_total_latency[i], gc_type_info[i], gc_preemption_info[i], gc_n_bio[i], gc_n_bdirty[i], gc_n_moreio[i]);
 	}
 #else
 	seq_printf(seq, "n_blks\tsec_no\tn_free\tsectyp\tn_node\tseclat\tcp_lat\ttotlat\tgc_type\n");
@@ -1247,13 +1248,14 @@ try_onemore:
 	gc_cp_latency = (long long*)kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_type_info = (int*)kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
 #ifdef F2FS_DA_QPGC
+	block_copy_remain = (unsigned int*)kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
 	gc_preemption_info = (int*)kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
 	gc_n_bio = (int*)kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
 	gc_n_bdirty = (int*)kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
 	gc_n_moreio = (int*)kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
 	if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type 
 		|| !block_copy_node || !gc_sec_latency || !gc_total_latency || !gc_cp_latency 
-		|| !gc_type_info || !gc_preemption_info || !gc_n_bio || !gc_n_bdirty || !gc_n_moreio){
+		|| !gc_type_info || !gc_preemption_info || !gc_n_bio || !gc_n_bdirty || !gc_n_moreio || !block_copy_remain){
 #else
         if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !block_copy_node || !gc_sec_latency || !gc_total_latency || !gc_cp_latency || !gc_type_info){
 #endif
@@ -1261,14 +1263,6 @@ try_onemore:
                 err = -ENOMEM;
                 goto free_nm;
         }
-#endif
-
-#ifdef F2FS_DA_QPGC
-	hard_threshold = reserved_sections(sbi) / 5;
-//	if (!hard_threshold)
-//		hard_threshold = 1;
-	if(hard_threshold < MIN_SECTIONS_HARD_THRESHOLD);
-		hard_threshold = MIN_SECTIONS_HARD_THRESHOLD;
 #endif
 
 	/* get an inode for node space */

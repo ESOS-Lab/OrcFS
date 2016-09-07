@@ -24,11 +24,6 @@
 
 #define __reverse_ffz(x) __reverse_ffs(~(x))
 
-#ifdef F2FS_DA_QPGC
-bool is_soft_threshold = false;
-int hard_threshold;
-#endif
-
 static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
@@ -54,6 +49,9 @@ unsigned int block_copy_index = 0;
 unsigned int max_block_copy_index = 4096;
 unsigned int len_node_sync = 0;
 bool block_copy_proc_is_called = false;
+
+//TEMP
+unsigned int* block_copy_remain = NULL;
 
 long long get_current_utime(void)
 {
@@ -273,29 +271,10 @@ void f2fs_balance_fs(struct f2fs_sb_info *sbi)
 	 * We should do GC or end up with checkpoint, if there are so many dirty
 	 * dir/node pages without enough free segments.
 	 */
-#ifdef F2FS_DA_QPGC
-	switch (has_not_enough_free_secs(sbi, 0)) {
-	case 0:
-		break;
-	case 1:
-		if (mutex_trylock(&sbi->gc_mutex)) {
-			is_soft_threshold = true;
-			f2fs_gc(sbi);
-		}
-		break;
-	case 2:
-		mutex_lock(&sbi->gc_mutex);
-		is_soft_threshold = !(has_not_enough_free_secs(sbi, 0) == 2);
-		f2fs_gc(sbi);
-		break;	
-	}
-#else
 	if (has_not_enough_free_secs(sbi, 0)) {
-		printk("OK!\n");
 		mutex_lock(&sbi->gc_mutex);
 		f2fs_gc(sbi);
 	}
-#endif
 }
 
 void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi)
@@ -1028,8 +1007,8 @@ static void allocate_segment_by_default(struct f2fs_sb_info *sbi,
 	else if (curseg->alloc_type == LFS && is_next_segment_free(sbi, type))
 		new_curseg(sbi, type, false);
 //TEMP
-	else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
-		change_curseg(sbi, type, true);
+	/*else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
+		change_curseg(sbi, type, true);*/
 	else
 		new_curseg(sbi, type, false);
 

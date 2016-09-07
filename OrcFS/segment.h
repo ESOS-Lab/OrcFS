@@ -294,11 +294,6 @@ struct sit_entry_set {
 	unsigned int entry_cnt;		/* the # of sit entries in set */
 };
 
-#ifdef F2FS_DA_QPGC
-extern bool is_soft_threshold;
-extern int hard_threshold;
-#endif
-
 /*
  * inline functions
  */
@@ -498,25 +493,6 @@ static inline bool need_SSR(struct f2fs_sb_info *sbi)
 						reserved_sections(sbi) + 1);
 }
 
-#ifdef F2FS_DA_QPGC
-static inline unsigned int has_not_enough_free_secs(struct f2fs_sb_info *sbi, int freed)
-{
-        int node_secs = get_blocktype_secs(sbi, F2FS_DIRTY_NODES);
-        int dent_secs = get_blocktype_secs(sbi, F2FS_DIRTY_DENTS);
-        int free_secs = free_sections(sbi);
-        int resv_secs = reserved_sections(sbi);
-
-        if (unlikely(sbi->por_doing))
-                return false;
-
-        if ((free_secs + freed) <= (node_secs + 2 * dent_secs + hard_threshold))
-                return 2;
-        else if ((free_secs + freed) <= (node_secs + 2 * dent_secs + resv_secs))
-                return 1;
-        else
-                return 0;
-}
-#else
 static inline bool has_not_enough_free_secs(struct f2fs_sb_info *sbi, int freed)
 {
 	int node_secs = get_blocktype_secs(sbi, F2FS_DIRTY_NODES);
@@ -528,7 +504,6 @@ static inline bool has_not_enough_free_secs(struct f2fs_sb_info *sbi, int freed)
 	return (free_sections(sbi) + freed) <= (node_secs + 2 * dent_secs +
 						reserved_sections(sbi));
 }
-#endif
 
 static inline bool excess_prefree_segs(struct f2fs_sb_info *sbi)
 {
@@ -864,6 +839,7 @@ extern unsigned int max_block_copy_index;
 extern unsigned int len_node_sync;
 extern bool block_copy_proc_is_called;
 #ifdef F2FS_DA_QPGC
+extern unsigned int *block_copy_remain;
 extern int *gc_preemption_info;
 extern int *gc_n_bio;
 extern int *gc_n_bdirty;

@@ -40,19 +40,6 @@ struct inode_entry {
 	struct inode *inode;
 };
 
-#ifdef F2FS_DA_QPGC
-/*
-	Context structure for gc.
-	If gc be preempted, gc save this context.
-	After then, when gc triggered again, gc refer this context and process
-*/
-struct gc_context {
-	unsigned int segno;		// segment number of victim section
-	bool has_victim;		// valid var for $segno
-	unsigned int latest_seg;	// segment number for next gc after preemption
-};
-#endif
-
 /*
  * inline functions
  */

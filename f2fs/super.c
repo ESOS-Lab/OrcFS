@@ -443,6 +443,8 @@ static void f2fs_put_super(struct super_block *sb)
                 kfree(gc_sec_latency);
                 kfree(gc_total_latency);
                 kfree(gc_type_info);
+//TEMP
+		kfree(block_copy_remain);
 
                 remove_proc_entry("block_copy_info", sbi->s_proc);
 #endif
@@ -657,10 +659,10 @@ static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
 static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
-
-	seq_printf(seq, "n_blocks\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_sec_latency\tgc_total_latency\tgc_type\n");
+//TEMP
+	seq_printf(seq, "n_blocks\tn_rema\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_sec_latency\tgc_total_latency\tgc_type\n");
         for(i=0; i<block_copy_index; i++){
-                seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_total_latency[i], gc_type_info[i]);
+                seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%d\n", block_copy[i], block_copy_remain[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_total_latency[i], gc_type_info[i]);
         }
 
 	block_copy_proc_is_called = true;
@@ -1208,16 +1210,12 @@ try_onemore:
         gc_sec_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_total_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_type_info = kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
+//TEMP
+	block_copy_remain = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !block_copy_node || !gc_sec_latency || !gc_total_latency || !gc_type_info){
                 err = -ENOMEM;
                 goto free_nm;
         }
-#endif
-
-#ifdef F2FS_DA_QPGC
-        hard_threshold = reserved_sections(sbi) / 2;
-        if (5 < hard_threshold)
-                hard_threshold = 5;
 #endif
 
 	/* get an inode for node space */

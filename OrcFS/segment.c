@@ -46,11 +46,6 @@
 
 #define __reverse_ffz(x) __reverse_ffs(~(x))
 
-#ifdef F2FS_DA_QPGC
-bool is_soft_threshold = true;
-int hard_threshold;
-#endif
-
 struct mutex do_w_mutex;
 
 static struct kmem_cache *discard_entry_slab;
@@ -87,6 +82,7 @@ unsigned int len_node_sync = 0;
 bool block_copy_proc_is_called = false;
 
 #ifdef F2FS_DA_QPGC
+unsigned int *block_copy_remain = NULL;
 int *gc_preemption_info = NULL;
 int *gc_n_bio = NULL;
 int *gc_n_bdirty = NULL;
@@ -318,21 +314,9 @@ void f2fs_balance_fs(struct f2fs_sb_info *sbi)
 #endif
 
 #ifdef F2FS_DA_QPGC
-        switch (has_not_enough_free_secs(sbi, 0)) {
-        case 0:
-                break;
-        case 1:
-                if (list_empty(&sbi->sb->s_bdi->wb.b_io) && mutex_trylock(&sbi->gc_mutex)) {
-                        is_soft_threshold = true;
-                        f2fs_gc(sbi);
-                }
-                break;
-        case 2:
-                mutex_lock(&sbi->gc_mutex);
-                is_soft_threshold = !(has_not_enough_free_secs(sbi, 0) == 2);
-                f2fs_gc(sbi);
-                break;
-        }
+	if (has_not_enough_free_secs(sbi, 0) && mutex_trylock(&sbi->gc_mutex)) {
+		f2fs_gc(sbi);
+	}
 #else
 	if (has_not_enough_free_secs(sbi, 0)) {
 		mutex_lock(&sbi->gc_mutex);
