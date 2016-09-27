@@ -10,10 +10,15 @@
  */
 #include <linux/blkdev.h>
 
+/* Define for Hot Cold Separation - Jinsoo */
+//#define HOT_COLD_TEST		// hard coding
+#define SC_HOT_COLD_SEPARATION
+
 /* Get filesystem info from proc */
 #define F2FS_GET_FS_WAF
 #define F2FS_GET_VALID_BLOCKS_INFO
 #define F2FS_GET_BLOCK_COPY_INFO
+#define F2FS_GET_CHECKPOINT_INFO
 
 #ifdef F2FS_GET_FS_WAF
 #include <linux/proc_fs.h>
@@ -764,6 +769,16 @@ extern unsigned long long len_fs_write;
 extern unsigned long long len_data_write;
 extern unsigned long long len_node_write;
 extern unsigned long long len_meta_write;
+
+// TEMP for hot cold separation
+extern unsigned long long len_cold_write;
+extern unsigned long long len_hot_write;
+extern unsigned long long len_write_node_pages;
+extern unsigned long long len_sc_node_pages;
+extern unsigned long long len_cp_node_pages;
+extern unsigned long long count_len_write_node_pages;
+extern unsigned long long count_len_sc_node_pages;
+extern unsigned long long count_len_cp_node_pages;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
@@ -773,14 +788,24 @@ extern unsigned int* block_copy;
 extern unsigned int* block_copy_free;
 extern unsigned int* block_copy_secno;
 extern unsigned int* block_copy_type;
-extern unsigned int* block_copy_node;
+extern unsigned int* block_copy_cold_data_blocks;
+extern unsigned int* block_copy_node_blocks;
+extern unsigned int* block_copy_cold_node_blocks;
 extern long long* gc_sec_latency;
 extern long long* gc_total_latency;
 extern int* gc_type_info;
 extern unsigned int block_copy_index;
 extern unsigned int max_block_copy_index;
-extern unsigned int len_node_sync;
+extern unsigned int count_cold_data_blocks;
+extern unsigned int count_node_blocks;
+extern unsigned int count_cold_node_blocks;
 extern bool block_copy_proc_is_called;
-//TEMP
-extern unsigned int* block_copy_remain;
+#endif
+
+#ifdef F2FS_GET_CHECKPOINT_INFO
+extern unsigned int* cp_node_write;
+extern unsigned int count_cp_node_write;
+extern unsigned int cp_info_index;
+extern unsigned int max_cp_info_index;
+extern bool checkpoint_proc_is_called;
 #endif

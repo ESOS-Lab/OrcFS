@@ -992,6 +992,24 @@ void write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	unsigned long long ckpt_ver;
 
+#ifdef F2FS_GET_CHECKPOINT_INFO
+	int i;
+
+	count_cp_node_write = 0;
+	if(checkpoint_proc_is_called == true){
+
+		for(i=0; i<max_cp_info_index; i++){
+			cp_node_write[i] = 0;
+		}
+
+		cp_info_index = 0;
+		checkpoint_proc_is_called = false;
+	}
+#endif
+#ifdef F2FS_GET_FS_WAF
+	count_len_cp_node_pages = 0;
+#endif
+
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "start block_ops");
 
 	mutex_lock(&sbi->cp_mutex);
@@ -1029,6 +1047,18 @@ void write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 out:
 	mutex_unlock(&sbi->cp_mutex);
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "finish checkpoint");
+
+#ifdef F2FS_GET_CHECKPOINT_INFO
+	if(cp_info_index < max_cp_info_index){
+		cp_node_write[cp_info_index] = count_cp_node_write;
+		cp_info_index++;
+		count_cp_node_write = 0;
+	}
+#endif
+
+#ifdef F2FS_GET_FS_WAF
+	len_cp_node_pages += count_len_cp_node_pages;
+#endif
 }
 
 void init_ino_entry_info(struct f2fs_sb_info *sbi)

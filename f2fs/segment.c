@@ -34,6 +34,16 @@ unsigned long long len_fs_write = 0;
 unsigned long long len_data_write = 0;
 unsigned long long len_node_write = 0;
 unsigned long long len_meta_write = 0;
+
+// TEMP for hot cold separation
+unsigned long long len_cold_write = 0;
+unsigned long long len_hot_write = 0;
+unsigned long long len_write_node_pages = 0;
+unsigned long long len_sc_node_pages = 0;
+unsigned long long len_cp_node_pages = 0;
+unsigned long long count_len_write_node_pages = 0;
+unsigned long long count_len_sc_node_pages = 0;
+unsigned long long count_len_cp_node_pages = 0;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
@@ -41,17 +51,18 @@ unsigned int* block_copy = NULL;
 unsigned int* block_copy_free = NULL;
 unsigned int* block_copy_secno = NULL;
 unsigned int* block_copy_type = NULL;
-unsigned int* block_copy_node = NULL;
+unsigned int* block_copy_cold_data_blocks = NULL;
+unsigned int* block_copy_node_blocks = NULL;
+unsigned int* block_copy_cold_node_blocks = NULL;
 long long* gc_sec_latency = NULL;
 long long* gc_total_latency = NULL;
 int* gc_type_info = NULL;
 unsigned int block_copy_index = 0;
 unsigned int max_block_copy_index = 4096;
-unsigned int len_node_sync = 0;
+unsigned int count_cold_data_blocks = 0;
+unsigned int count_node_blocks = 0;
+unsigned int count_cold_node_blocks = 0;
 bool block_copy_proc_is_called = false;
-
-//TEMP
-unsigned int* block_copy_remain = NULL;
 
 long long get_current_utime(void)
 {
@@ -59,6 +70,14 @@ long long get_current_utime(void)
         do_gettimeofday(&current_time);
         return (current_time.tv_sec*1000000 + current_time.tv_usec);
 }
+#endif
+
+#ifdef F2FS_GET_CHECKPOINT_INFO
+unsigned int* cp_node_write = NULL;
+unsigned int count_cp_node_write = 0;
+unsigned int cp_info_index = 0;
+unsigned int max_cp_info_index = 4096;
+bool checkpoint_proc_is_called = false;
 #endif
 
 /*
@@ -1006,9 +1025,12 @@ static void allocate_segment_by_default(struct f2fs_sb_info *sbi,
 		new_curseg(sbi, type, false);
 	else if (curseg->alloc_type == LFS && is_next_segment_free(sbi, type))
 		new_curseg(sbi, type, false);
-//TEMP
-	/*else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
-		change_curseg(sbi, type, true);*/
+/*
+#ifndef HOT_COLD_TEST
+	else if (need_SSR(sbi) && get_ssr_segment(sbi, type))
+		change_curseg(sbi, type, true);
+#endif
+*/
 	else
 		new_curseg(sbi, type, false);
 
@@ -1205,10 +1227,31 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 	struct f2fs_summary sum;
 
 #ifdef F2FS_GET_FS_WAF
+//TEMP for hot cold separation
+	struct node_info ni;
+
         len_node_write++;
+
+//TEMP for hot cold separation
+	get_node_info(sbi, nid, &ni);
+	if(ni.ino == 3872){
+		len_cold_write++;
+	}
+	else if(ni.ino == 4){
+		len_hot_write++;
+	}
+	else{
+		printk("[JS DBG] wrong inode write: %d\n", ni.ino);
+	}
+	count_len_write_node_pages++;
+	count_len_sc_node_pages++;
+	count_len_cp_node_pages++;
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-        len_node_sync++;
+	count_node_blocks++;
+#endif
+#ifdef F2FS_GET_CHECKPOINT_INFO
+	count_cp_node_write++;
 #endif
 
 	set_summary(&sum, nid, 0, 0);

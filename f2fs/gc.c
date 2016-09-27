@@ -137,12 +137,17 @@ static int select_gc_type(struct f2fs_gc_kthread *gc_th, int gc_type)
 {
 	int gc_mode = (gc_type == BG_GC) ? GC_CB : GC_GREEDY;
 
+//TEMP
+#ifndef HOT_COLD_TEST
 	if (gc_th && gc_th->gc_idle) {
 		if (gc_th->gc_idle == 1)
 			gc_mode = GC_CB;
 		else if (gc_th->gc_idle == 2)
 			gc_mode = GC_GREEDY;
 	}
+#else
+	gc_mode = GC_CB;
+#endif
 	return gc_mode;
 }
 
@@ -400,6 +405,10 @@ static void gc_node_segment(struct f2fs_sb_info *sbi,
 	struct f2fs_summary *entry;
 	int off;
 
+#ifdef F2FS_GET_FS_WAF
+	count_len_sc_node_pages = 0;
+#endif
+
 next_step:
 	entry = sum;
 
@@ -408,8 +417,12 @@ next_step:
 		struct page *node_page;
 
 		/* stop BG_GC if there is not enough free sections. */
-		if (gc_type == BG_GC && has_not_enough_free_secs(sbi, 0))
+		if (gc_type == BG_GC && has_not_enough_free_secs(sbi, 0)){
+#ifdef F2FS_GET_FS_WAF
+			len_sc_node_pages += count_len_sc_node_pages;
+#endif
 			return;
+		}
 
 		if (check_valid_map(sbi, segno, off) == 0)
 			continue;
@@ -451,13 +464,7 @@ next_step:
 			.nr_to_write = LONG_MAX,
 			.for_reclaim = 0,
 		};
-#ifdef F2FS_GET_BLOCK_COPY_INFO
-                len_node_sync = 0;
                 sync_node_pages(sbi, 0, &wbc);
-                block_copy_node[block_copy_index-1] += len_node_sync;
-#else
-                sync_node_pages(sbi, 0, &wbc);
-#endif
 
 		/*
 		 * In the case of FG_GC, it'd be better to reclaim this victim
@@ -466,6 +473,10 @@ next_step:
 		if (get_valid_blocks(sbi, segno, 1) != 0)
 			goto next_step;
 	}
+
+#ifdef F2FS_GET_FS_WAF
+	len_sc_node_pages += count_len_sc_node_pages;
+#endif
 }
 
 /*
@@ -537,15 +548,34 @@ static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 		if (PageWriteback(page))
 			goto out;
 		set_page_dirty(page);
+//TEMP
+#ifdef HOT_COLD_TEST
+		if(inode->i_size > 140000000000){
+			set_cold_data(page);
+		}
+#else
 		set_cold_data(page);
+#endif
 	} else {
 		f2fs_wait_on_page_writeback(page, DATA);
 
 		if (clear_page_dirty_for_io(page))
 			inode_dec_dirty_pages(inode);
+#ifdef HOT_COLD_TEST
+//		if(inode->i_size == 144955146240){
+		if(inode->i_size > 140000000000){
+			set_cold_data(page);
+			do_write_data_page(page, &fio);
+			clear_cold_data(page);
+		}
+		else{
+			do_write_data_page(page, &fio);
+		}
+#else
 		set_cold_data(page);
 		do_write_data_page(page, &fio);
 		clear_cold_data(page);
+#endif
 	}
 out:
 	f2fs_put_page(page, 1);
@@ -625,6 +655,14 @@ next_step:
 						start_bidx + ofs_in_node);
 				if (IS_ERR(data_page))
 					continue;
+#ifdef F2FS_GET_BLOCK_COPY_INFO
+//TEMP
+//                              if(inode->i_size == 144955146240){
+				if(inode->i_size > 140000000000){
+                                        count_cold_data_blocks++;
+                                }
+#endif
+
 				move_data_page(inode, data_page, gc_type);
 				stat_inc_data_blk_count(sbi, 1);
 			}
@@ -740,6 +778,7 @@ gc_more:
 								META_SSA);
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
+	/* Init trace array when the proc info was taken */
 	if(block_copy_proc_is_called == true){
                 block_copy_index = 0;
 
@@ -748,7 +787,9 @@ gc_more:
                         block_copy_free[i] = 0;
                         block_copy_secno[i] = 0;
                         block_copy_type[i] = 0;
-                        block_copy_node[i] = 0;
+                        block_copy_cold_data_blocks[i] = 0;
+                        block_copy_node_blocks[i] = 0;
+                        block_copy_cold_node_blocks[i] = 0;
                         gc_sec_latency[i] = 0;
                         gc_total_latency[i] = 0;
                         gc_type_info[i] = 0;
@@ -756,35 +797,26 @@ gc_more:
                 block_copy_proc_is_called = false;
         }
 
+	/* Get current segment cleaning info */
         if(block_copy_index < max_block_copy_index){
 
                 sum_page = get_sum_page(sbi, segno);
                 sum = page_address(sum_page);
 
-                if(block_copy_index == 0){
+                if(block_copy_index == 0 || GET_SECNO(sbi, segno) != block_copy_secno[block_copy_index-1]){
                         block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
 //                      block_copy_free[block_copy_index] = free_segments(sbi);
                         block_copy_free[block_copy_index] = free_sections(sbi);
                         block_copy_secno[block_copy_index] = GET_SECNO(sbi, segno);
                         block_copy_type[block_copy_index] = GET_SUM_TYPE(&sum->footer);
                         gc_type_info[block_copy_index] = gc_type;
-
                         block_copy_index++;
                 }
-                else{
-                        if(GET_SECNO(sbi, segno) != block_copy_secno[block_copy_index-1]){
-                                block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
-//                              block_copy_free[block_copy_index] = free_segments(sbi);
-                                block_copy_free[block_copy_index] = free_sections(sbi);
-                                block_copy_secno[block_copy_index] = GET_SECNO(sbi, segno);
-                                block_copy_type[block_copy_index] = GET_SUM_TYPE(&sum->footer);
-                                gc_type_info[block_copy_index] = gc_type;
 
-                                block_copy_index++;
-                        }
-                }
 		f2fs_put_page(sum_page, 1);
 
+		count_cold_node_blocks = 0;
+		count_node_blocks = 0;
         }
 #endif
 
@@ -798,9 +830,18 @@ gc_more:
 	}
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
+
+	/* Get current segment cleaning info */
         gc_sec_time_end = get_current_utime();
         if(block_copy_index < max_block_copy_index){
                 gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
+		block_copy_cold_data_blocks[block_copy_index-1] += count_cold_data_blocks;
+		block_copy_node_blocks[block_copy_index-1] += count_node_blocks;
+		block_copy_cold_node_blocks[block_copy_index-1] += count_cold_node_blocks;
+
+		count_cold_data_blocks = 0;
+		count_cold_node_blocks = 0;
+		count_node_blocks = 0;
         }
 #endif
 
@@ -809,11 +850,12 @@ gc_more:
 
 	if (gc_type == FG_GC)
 		write_checkpoint(sbi, &cpc);
-preemption:
+
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         gc_total_time_end = get_current_utime();
         if(block_copy_index < max_block_copy_index){
                 gc_total_latency[block_copy_index-1] = gc_total_time_end - gc_total_time_start;
+		count_cold_node_blocks = 0;
         }
 #endif
 

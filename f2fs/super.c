@@ -439,14 +439,18 @@ static void f2fs_put_super(struct super_block *sb)
                 kfree(block_copy_free);
                 kfree(block_copy_secno);
                 kfree(block_copy_type);
-                kfree(block_copy_node);
+                kfree(block_copy_cold_data_blocks);
+                kfree(block_copy_node_blocks);
+                kfree(block_copy_cold_node_blocks);
                 kfree(gc_sec_latency);
                 kfree(gc_total_latency);
                 kfree(gc_type_info);
-//TEMP
-		kfree(block_copy_remain);
 
                 remove_proc_entry("block_copy_info", sbi->s_proc);
+#endif
+#ifdef F2FS_GET_CHECKPOINT_INFO
+		kfree(cp_node_write);
+		remove_proc_entry("checkpoint_info", sbi->s_proc);
 #endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
@@ -595,17 +599,30 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 #ifdef F2FS_GET_FS_WAF
 static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
-	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\n", len_user_data, 
+	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n",
+							len_user_data, 
 							len_fs_write, 
 							len_data_write, 
 							len_node_write, 
-							len_meta_write);
+							len_meta_write,
+							len_cold_write,
+							len_hot_write,
+							len_write_node_pages,
+							len_sc_node_pages,
+							len_cp_node_pages);
 
         len_user_data = 0;
         len_fs_write = 0;
 	len_data_write = 0;
 	len_node_write = 0;
 	len_meta_write = 0;
+
+// TEMP for hot cold separation
+	len_cold_write = 0;
+	len_hot_write = 0;
+	len_write_node_pages = 0;
+	len_sc_node_pages = 0;
+	len_cp_node_pages = 0;
 
         return 0;
 }
@@ -660,12 +677,36 @@ static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
 //TEMP
-	seq_printf(seq, "n_blocks\tn_rema\tsec_no\tn_free_secs\tsec_type\tn_blks_node\tgc_sec_latency\tgc_total_latency\tgc_type\n");
+	seq_printf(seq, "n_blks\tsec_no\tn_free\tsectyp\tgc_type\tseclat\ttotlat\tcold_d\tnodes\tcold_n\n");
         for(i=0; i<block_copy_index; i++){
-                seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%d\n", block_copy[i], block_copy_remain[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_total_latency[i], gc_type_info[i]);
+                seq_printf(seq, "%u\t%u\t%u\t%u\t%d\t%lld\t%lld\t%u\t%u\t%u\n", 
+							block_copy[i],
+							block_copy_secno[i], 
+							block_copy_free[i], 
+							block_copy_type[i], 
+							gc_type_info[i], 
+							gc_sec_latency[i], 
+							gc_total_latency[i], 
+							block_copy_cold_data_blocks[i],
+							block_copy_node_blocks[i],
+							block_copy_cold_node_blocks[i]);
         }
 
 	block_copy_proc_is_called = true;
+
+	return 0;
+}
+#endif
+
+#ifdef F2FS_GET_CHECKPOINT_INFO
+static int checkpoint_info_seq_show(struct seq_file *seq, void *offset)
+{
+	int i;
+
+	for(i=0; i < cp_info_index; i++){
+		seq_printf(seq,"%u\n", cp_node_write[i]);
+	}
+	checkpoint_proc_is_called = true;
 
 	return 0;
 }
@@ -719,6 +760,13 @@ static int block_copy_info_open_fs(struct inode *inode, struct file *file)
 }
 #endif
 
+#ifdef F2FS_GET_CHECKPOINT_INFO
+static int checkpoint_info_open_fs(struct inode *inode, struct file *file)
+{
+        return single_open(file, checkpoint_info_seq_show, PDE_DATA(inode));
+}
+#endif
+
 static int segment_info_open_fs(struct inode *inode, struct file *file)
 {
 	return single_open(file, segment_info_seq_show, PDE_DATA(inode));
@@ -748,6 +796,16 @@ static const struct file_operations f2fs_valid_blocks_info_fops = {
 static const struct file_operations f2fs_block_copy_info_fops = {
         .owner = THIS_MODULE,
         .open = block_copy_info_open_fs,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release,
+};
+#endif
+
+#ifdef F2FS_GET_CHECKPOINT_INFO
+static const struct file_operations f2fs_checkpoint_info_fops = {
+        .owner = THIS_MODULE,
+        .open = checkpoint_info_open_fs,
         .read = seq_read,
         .llseek = seq_lseek,
         .release = single_release,
@@ -1206,16 +1264,24 @@ try_onemore:
         block_copy_free = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_secno = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_type = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
-        block_copy_node = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_cold_data_blocks = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_node_blocks = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
+        block_copy_cold_node_blocks = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         gc_sec_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_total_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_type_info = kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
-//TEMP
-	block_copy_remain = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
-        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !block_copy_node || !gc_sec_latency || !gc_total_latency || !gc_type_info){
+        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !gc_sec_latency || !gc_total_latency || !gc_type_info || !block_copy_cold_data_blocks || !block_copy_node_blocks || !block_copy_cold_node_blocks){
                 err = -ENOMEM;
                 goto free_nm;
         }
+#endif
+
+#ifdef F2FS_GET_CHECKPOINT_INFO
+	cp_node_write = kmalloc(sizeof(unsigned int)*max_cp_info_index, GFP_KERNEL);
+	if(!cp_node_write){
+		err = -ENOMEM;
+		goto free_nm;
+	}
 #endif
 
 	/* get an inode for node space */
@@ -1269,6 +1335,11 @@ try_onemore:
         if (sbi->s_proc)
                 proc_create_data("block_copy_info", S_IRUGO, sbi->s_proc,
                                  &f2fs_block_copy_info_fops, sb);
+#endif
+#ifdef F2FS_GET_CHECKPOINT_INFO
+        if (sbi->s_proc)
+                proc_create_data("checkpoint_info", S_IRUGO, sbi->s_proc,
+                                 &f2fs_checkpoint_info_fops, sb);
 #endif
 	if (sbi->s_proc)
 		proc_create_data("segment_info", S_IRUGO, sbi->s_proc,
@@ -1327,6 +1398,9 @@ free_proc:
 #ifdef F2FS_GET_BLOCK_COPY_INFO
                 remove_proc_entry("block_copy_info", sbi->s_proc);
 #endif
+#ifdef F2FS_GET_CHECKPOINT_INFO
+                remove_proc_entry("checkpoint_info", sbi->s_proc);
+#endif
 		remove_proc_entry("segment_info", sbi->s_proc);
 		remove_proc_entry(sb->s_id, f2fs_proc_root);
 	}
@@ -1378,6 +1452,7 @@ static int __init init_inodecache(void)
 {
 	f2fs_inode_cachep = f2fs_kmem_cache_create("f2fs_inode_cache",
 			sizeof(struct f2fs_inode_info));
+
 	if (!f2fs_inode_cachep)
 		return -ENOMEM;
 	return 0;
