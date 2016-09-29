@@ -378,6 +378,11 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
 
 	set_inode_flag(fi, FI_NEW_INODE);
 
+#ifdef SC_HOT_COLD_SEPARATION
+	fi->i_wcount = 0;
+	list_add_hot_candidate(&fi->hc_list);
+#endif
+
 	if (test_opt(F2FS_SB(sb), INLINE_XATTR))
 		set_inode_flag(fi, FI_INLINE_XATTR);
 
@@ -414,7 +419,21 @@ static void f2fs_dirty_inode(struct inode *inode, int flags)
 static void f2fs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
+
+#ifdef SC_HOT_COLD_SEPARATION
+	struct f2fs_inode_info* fi = F2FS_I(inode);
+
+	if(is_inode_hc_flag_set(fi, F2FS_HOT_FILE)){
+		list_del_hot(&fi->hc_list, false);
+	}
+	else if(is_inode_hc_flag_set(fi, F2FS_HOT_CANDIDATE)){
+		list_del_hot_candidate(&fi->hc_list);
+	}
+
 	kmem_cache_free(f2fs_inode_cachep, F2FS_I(inode));
+#else 
+	kmem_cache_free(f2fs_inode_cachep, F2FS_I(inode));
+#endif
 }
 
 static void f2fs_destroy_inode(struct inode *inode)
@@ -1207,6 +1226,17 @@ try_onemore:
 	init_rwsem(&sbi->cp_rwsem);
 	init_waitqueue_head(&sbi->cp_wait);
 	init_sb_info(sbi);
+
+#ifdef SC_HOT_COLD_SEPARATION
+	INIT_LIST_HEAD(&f2fs_hot_ilist);
+	INIT_LIST_HEAD(&f2fs_hot_candidate_ilist);
+	n_hot_ilist_entries = 0;
+	n_hot_candidate_ilist_entries = 0;
+	global_wcount = 0;
+	mutex_init(&hot_ilist_lock);
+	mutex_init(&hot_candidate_ilist_lock);
+	mutex_init(&global_wcount_lock);
+#endif
 
 	/* get an inode for meta space */
 	sbi->meta_inode = f2fs_iget(sb, F2FS_META_INO(sbi));

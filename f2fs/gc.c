@@ -137,8 +137,7 @@ static int select_gc_type(struct f2fs_gc_kthread *gc_th, int gc_type)
 {
 	int gc_mode = (gc_type == BG_GC) ? GC_CB : GC_GREEDY;
 
-//TEMP
-#ifndef HOT_COLD_TEST
+#ifndef SC_HOT_COLD_SEPARATION
 	if (gc_th && gc_th->gc_idle) {
 		if (gc_th->gc_idle == 1)
 			gc_mode = GC_CB;
@@ -554,7 +553,13 @@ static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 			set_cold_data(page);
 		}
 #else
+	#ifdef SC_HOT_COLD_SEPARATION
+		if(!is_hot_inode(inode)){
+			set_cold_data(page);
+		}
+	#else
 		set_cold_data(page);
+	#endif
 #endif
 	} else {
 		f2fs_wait_on_page_writeback(page, DATA);
@@ -572,9 +577,20 @@ static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 			do_write_data_page(page, &fio);
 		}
 #else
+	#ifdef SC_HOT_COLD_SEPARATION
+		if(!is_hot_inode(inode)){
+			set_cold_data(page);
+			do_write_data_page(page, &fio);
+			clear_cold_data(page);
+		}
+		else{
+			do_write_data_page(page, &fio);
+		}
+	#else
 		set_cold_data(page);
 		do_write_data_page(page, &fio);
 		clear_cold_data(page);
+	#endif
 #endif
 	}
 out:
@@ -857,6 +873,11 @@ gc_more:
                 gc_total_latency[block_copy_index-1] = gc_total_time_end - gc_total_time_start;
 		count_cold_node_blocks = 0;
         }
+#endif
+
+//TEMP
+#ifdef SC_HOT_COLD_SEPARATION
+//	aging_wcount();
 #endif
 
 stop:

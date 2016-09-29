@@ -763,6 +763,17 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 	return desired - nr_to_write;
 }
 
+#ifdef SC_HOT_COLD_SEPARATION
+extern struct list_head f2fs_hot_ilist;
+extern struct list_head f2fs_hot_candidate_ilist;
+extern unsigned int n_hot_ilist_entries;
+extern unsigned int n_hot_candidate_ilist_entries;
+extern unsigned int global_wcount;
+extern struct mutex hot_ilist_lock;
+extern struct mutex hot_candidate_ilist_lock;
+extern struct mutex global_wcount_lock;
+#endif
+
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;

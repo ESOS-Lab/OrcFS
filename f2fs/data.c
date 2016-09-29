@@ -974,7 +974,9 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 #ifdef F2FS_GET_FS_WAF
         len_user_data += len;
 #endif
-
+#ifdef SC_HOT_COLD_SEPARATION
+	inc_wcount(inode);
+#endif
 	f2fs_balance_fs(sbi);
 
 repeat:
@@ -1189,3 +1191,198 @@ const struct address_space_operations f2fs_dblock_aops = {
 	.direct_IO	= f2fs_direct_IO,
 	.bmap		= f2fs_bmap,
 };
+
+#ifdef SC_HOT_COLD_SEPARATION
+void list_add_hot_candidate(struct list_head *new)
+{
+	struct f2fs_inode_info *fi_new = container_of(new, struct f2fs_inode_info, hc_list);
+
+	/* If the hot candidate ilist is full, discard the tail entry */
+	if(n_hot_candidate_ilist_entries == MAX_HOT_CANDIDATE_ENTRIES){
+		list_del_hot_candidate(f2fs_hot_candidate_ilist.prev);
+	}
+
+	/* Add new entry to the list head of hot candidate list */ 
+	mutex_lock(&hot_candidate_ilist_lock);
+	list_add(new, &f2fs_hot_candidate_ilist);
+	n_hot_candidate_ilist_entries++;
+	mutex_unlock(&hot_candidate_ilist_lock);	
+
+	/* Update the state of the inode */
+	set_inode_hc_flag(fi_new, F2FS_HOT_CANDIDATE);
+}
+
+void list_del_hot_candidate(struct list_head *del)
+{
+	struct f2fs_inode_info *fi = container_of(del, struct f2fs_inode_info, hc_list);
+
+	/* Delete the entry from the hot candidate list */ 
+	mutex_lock(&hot_candidate_ilist_lock);
+	list_del(del);
+	n_hot_candidate_ilist_entries--;
+	mutex_unlock(&hot_candidate_ilist_lock);
+	
+	/* Update the state of the inode */
+	clear_inode_hc_flag(fi, F2FS_HOT_CANDIDATE);
+}
+
+void list_hot_candidate_move_head(struct list_head *move)
+{
+	/* If the entry is already the head entry of the list, skip */
+	if(move == f2fs_hot_candidate_ilist->next)
+		return;
+
+	/* Move the entry to the head of the hot candidate ilist */
+	mutex_lock(&hot_candidate_ilist_lock);
+	list_del(move);
+	list_add(move, &f2fs_hot_candidate_ilist);
+	mutex_unlock(&hot_candidate_ilist_lock);
+}
+
+void list_add_hot(struct list_head *new)
+{
+	struct f2fs_inode_info *fi = container_of(new, struct f2fs_inode_info, hc_list);
+
+	/* Delete the entry from the hot list */
+	mutex_lock(&hot_ilist_lock);
+	list_add(new, &f2fs_hot_ilist);
+	n_hot_ilist_entries++;
+	mutex_unlock(&hot_ilist_lock);
+
+	/* Update the state of the inode */
+	set_inode_hc_flag(fi, F2FS_HOT_FILE);
+}
+
+void list_del_hot(struct list_head *del, bool locked)
+{
+	struct f2fs_inode_info *fi = container_of(del, struct f2fs_inode_info, hc_list);
+
+	/* Delete the entry from the hot list */
+	if(locked == false)
+		mutex_lock(&hot_ilist_lock);
+
+	list_del(del);
+	n_hot_ilist_entries--;
+	
+	if(locked == false)
+		mutex_unlock(&hot_ilist_lock);
+
+	/* Update the state of the inode */
+	clear_inode_hc_flag(fi, F2FS_HOT_FILE);
+}
+
+/* Promotion: hot_candidate_ilist -> hot_ilist */
+void list_hot_promotion(struct list_head *new_hot)
+{
+	struct list_head* temp;
+
+	/* Delete the new hot entry from the hot candidate list */	
+	list_del_hot_candidate(new_hot);
+
+	/* If the hot ilist is full, demote the tail entry to candidate ilist */
+	if(n_hot_ilist_entries == MAX_HOT_ENTRIES){
+
+		/* Delete the tail entry from the hot ilist */
+		temp = f2fs_hot_ilist.prev;
+		list_del_hot(temp, false);
+
+		/* Add the tail entry to the head of the candidate ilist */
+		list_add_hot_candidate(temp);
+	}
+
+	/* Add new entry to the list head of hot list */
+	list_add_hot(new_hot);
+}
+
+void list_hot_move_head(struct list_head *move)
+{
+	/* If the entry is already the head entry of the list, skip */
+	if(move == f2fs_hot_ilist->next)
+		return;
+
+	/* Move the entry to the head of the hot ilist */
+	mutex_lock(&hot_ilist_lock);
+	list_del(move);
+	list_add(move, &f2fs_hot_ilist);
+	mutex_unlock(&hot_ilist_lock);
+}
+
+void inc_wcount(struct inode *inode)
+{
+	struct f2fs_inode_info *fi = F2FS_I(inode);
+
+	/* Increase the write count of the inode */
+	fi->i_wcount++;
+
+	if(!is_inode_hc_flag_set(fi, F2FS_HOT_FILE) 
+		&& !is_inode_hc_flag_set(fi, F2FS_HOT_CANDIDATE)){
+
+		/* If the inode is COLD, add it to hot candidate ilist */
+		list_add_hot_candidate(&fi->hc_list);
+	}
+	else if(is_inode_hc_flag_set(fi, F2FS_HOT_CANDIDATE)
+		&& fi->i_wcount >= HOT_W_THRESHOLD){
+		/* If the inode is HOT CANDIDATE and wcount exceeds hot threshold,
+			move it from hot candidate ilist to hot ilist */
+// TEMP
+		printk("[JS DBG] %p (%llu): candidate -> hot, i_count: %d\n", &fi->hc_list, inode->i_size, fi->i_wcount);
+
+		list_hot_promotion(&fi->hc_list);
+	}
+	else if(is_inode_hc_flag_set(fi, F2FS_HOT_CANDIDATE)){
+		list_hot_candidate_move_head(&fi->hc_list);	
+	}
+	else if(is_inode_hc_flag_set(fi, F2FS_HOT_FILE)
+		&& fi->i_wcount < HOT_W_THRESHOLD){
+		
+		list_del_hot(&fi->hc_list, false);
+		list_add_hot_candidate(&fi->hc_list);
+// TEMP
+		printk("[JS DBG] %p (%llu): hot -> candidate, i_count: %d \n", &fi->hc_list, inode->i_size, fi->i_wcount);
+	}
+	else if(is_inode_hc_flag_set(fi, F2FS_HOT_FILE)){
+		list_hot_move_head(&fi->hc_list);	
+	}
+
+//TEMP
+//	if(inode->i_size > 144955146000){
+//		printk("[JS DBG] %d / %d \n", fi->i_wcount, global_wcount);
+//	}
+
+	/* Update global wcount and if needed, aging all local wcount */
+	mutex_lock(&global_wcount_lock);
+
+	global_wcount++;
+	if(global_wcount >= N_AGING_WCOUNT){
+		aging_wcount();
+		global_wcount = 0;
+	}
+	mutex_unlock(&global_wcount_lock);
+}
+
+void aging_wcount(void)
+{
+	struct f2fs_inode_info *cur_fi;
+
+	/* aging hot ilist */
+	mutex_lock(&hot_ilist_lock);
+	list_for_each_entry(cur_fi, &f2fs_hot_ilist, hc_list){
+		cur_fi->i_wcount = cur_fi->i_wcount >> 1;
+	}	
+	mutex_unlock(&hot_ilist_lock);
+
+	/* aging hot candidate ilist */
+	mutex_lock(&hot_candidate_ilist_lock);
+	list_for_each_entry(cur_fi, &f2fs_hot_candidate_ilist, hc_list){
+		cur_fi->i_wcount = cur_fi->i_wcount >> 1;
+	}	
+	mutex_unlock(&hot_candidate_ilist_lock);
+}
+
+bool is_hot_inode(struct inode *inode)
+{
+	struct f2fs_inode_info *fi = F2FS_I(inode);
+
+	return is_inode_hc_flag_set(fi, F2FS_HOT_FILE);
+}
+#endif

@@ -28,6 +28,17 @@ static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
 
+#ifdef SC_HOT_COLD_SEPARATION
+struct list_head f2fs_hot_ilist;
+struct list_head f2fs_hot_candidate_ilist;
+unsigned int n_hot_ilist_entries = 0;
+unsigned int n_hot_candidate_ilist_entries = 0;
+unsigned int global_wcount = 0;
+struct mutex hot_ilist_lock;
+struct mutex hot_candidate_ilist_lock;
+struct mutex global_wcount_lock;
+#endif
+
 #ifdef F2FS_GET_FS_WAF
 unsigned long long len_user_data = 0;
 unsigned long long len_fs_write = 0;
