@@ -378,11 +378,6 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
 
 	set_inode_flag(fi, FI_NEW_INODE);
 
-#ifdef SC_HOT_COLD_SEPARATION
-	fi->i_wcount = 0;
-	list_add_hot_candidate(&fi->hc_list);
-#endif
-
 	if (test_opt(F2FS_SB(sb), INLINE_XATTR))
 		set_inode_flag(fi, FI_INLINE_XATTR);
 
@@ -420,20 +415,7 @@ static void f2fs_i_callback(struct rcu_head *head)
 {
 	struct inode *inode = container_of(head, struct inode, i_rcu);
 
-#ifdef SC_HOT_COLD_SEPARATION
-	struct f2fs_inode_info* fi = F2FS_I(inode);
-
-	if(is_inode_hc_flag_set(fi, F2FS_HOT_FILE)){
-		list_del_hot(&fi->hc_list, false);
-	}
-	else if(is_inode_hc_flag_set(fi, F2FS_HOT_CANDIDATE)){
-		list_del_hot_candidate(&fi->hc_list);
-	}
-
 	kmem_cache_free(f2fs_inode_cachep, F2FS_I(inode));
-#else 
-	kmem_cache_free(f2fs_inode_cachep, F2FS_I(inode));
-#endif
 }
 
 static void f2fs_destroy_inode(struct inode *inode)
@@ -458,9 +440,6 @@ static void f2fs_put_super(struct super_block *sb)
                 kfree(block_copy_free);
                 kfree(block_copy_secno);
                 kfree(block_copy_type);
-                kfree(block_copy_cold_data_blocks);
-                kfree(block_copy_node_blocks);
-                kfree(block_copy_cold_node_blocks);
                 kfree(gc_sec_latency);
                 kfree(gc_total_latency);
                 kfree(gc_type_info);
@@ -618,30 +597,19 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 #ifdef F2FS_GET_FS_WAF
 static int waf_info_seq_show(struct seq_file *seq, void *offset)
 {
-	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\t%llu\n",
+	seq_printf(seq,"%llu\t%llu\t%llu\t%llu\t%llu\n",
 							len_user_data, 
 							len_fs_write, 
 							len_data_write, 
 							len_node_write, 
-							len_meta_write,
-							len_cold_write,
-							len_hot_write,
-							len_write_node_pages,
-							len_sc_node_pages,
-							len_cp_node_pages);
+							len_meta_write
+							);
 
         len_user_data = 0;
         len_fs_write = 0;
 	len_data_write = 0;
 	len_node_write = 0;
 	len_meta_write = 0;
-
-// TEMP for hot cold separation
-	len_cold_write = 0;
-	len_hot_write = 0;
-	len_write_node_pages = 0;
-	len_sc_node_pages = 0;
-	len_cp_node_pages = 0;
 
         return 0;
 }
@@ -696,19 +664,16 @@ static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
 {
 	int i;
 //TEMP
-	seq_printf(seq, "n_blks\tsec_no\tn_free\tsectyp\tgc_type\tseclat\ttotlat\tcold_d\tnodes\tcold_n\n");
+	seq_printf(seq, "n_blks\tsec_no\tn_free\tsectyp\tgc_type\tseclat\ttotlat\n");
         for(i=0; i<block_copy_index; i++){
-                seq_printf(seq, "%u\t%u\t%u\t%u\t%d\t%lld\t%lld\t%u\t%u\t%u\n", 
+                seq_printf(seq, "%u\t%u\t%u\t%u\t%d\t%lld\t%lld\n", 
 							block_copy[i],
 							block_copy_secno[i], 
 							block_copy_free[i], 
 							block_copy_type[i], 
 							gc_type_info[i], 
 							gc_sec_latency[i], 
-							gc_total_latency[i], 
-							block_copy_cold_data_blocks[i],
-							block_copy_node_blocks[i],
-							block_copy_cold_node_blocks[i]);
+							gc_total_latency[i]); 
         }
 
 	block_copy_proc_is_called = true;
@@ -1227,17 +1192,6 @@ try_onemore:
 	init_waitqueue_head(&sbi->cp_wait);
 	init_sb_info(sbi);
 
-#ifdef SC_HOT_COLD_SEPARATION
-	INIT_LIST_HEAD(&f2fs_hot_ilist);
-	INIT_LIST_HEAD(&f2fs_hot_candidate_ilist);
-	n_hot_ilist_entries = 0;
-	n_hot_candidate_ilist_entries = 0;
-	global_wcount = 0;
-	mutex_init(&hot_ilist_lock);
-	mutex_init(&hot_candidate_ilist_lock);
-	mutex_init(&global_wcount_lock);
-#endif
-
 	/* get an inode for meta space */
 	sbi->meta_inode = f2fs_iget(sb, F2FS_META_INO(sbi));
 	if (IS_ERR(sbi->meta_inode)) {
@@ -1294,13 +1248,10 @@ try_onemore:
         block_copy_free = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_secno = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_type = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
-        block_copy_cold_data_blocks = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
-        block_copy_node_blocks = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
-        block_copy_cold_node_blocks = kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         gc_sec_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_total_latency = kmalloc(sizeof(long long)*max_block_copy_index, GFP_KERNEL);
         gc_type_info = kmalloc(sizeof(int)*max_block_copy_index, GFP_KERNEL);
-        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !gc_sec_latency || !gc_total_latency || !gc_type_info || !block_copy_cold_data_blocks || !block_copy_node_blocks || !block_copy_cold_node_blocks){
+        if(!block_copy || !block_copy_free || !block_copy_secno || !block_copy_type || !gc_sec_latency || !gc_total_latency || !gc_type_info ){
                 err = -ENOMEM;
                 goto free_nm;
         }

@@ -10,10 +10,6 @@
  */
 #include <linux/blkdev.h>
 
-/* Define for Hot Cold Separation - Jinsoo */
-//#define HOT_COLD_TEST		// hard coding
-#define SC_HOT_COLD_SEPARATION
-
 /* Get filesystem info from proc */
 #define F2FS_GET_FS_WAF
 #define F2FS_GET_VALID_BLOCKS_INFO
@@ -528,7 +524,6 @@ static inline bool need_inplace_update(struct inode *inode)
 
 	if (policy & (0x1 << F2FS_IPU_FORCE))
 		return true;
-//TEMP
 	if (policy & (0x1 << F2FS_IPU_SSR) && need_SSR(sbi))
 		return true;
 	if (policy & (0x1 << F2FS_IPU_UTIL) &&
@@ -763,33 +758,12 @@ static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
 	return desired - nr_to_write;
 }
 
-#ifdef SC_HOT_COLD_SEPARATION
-extern struct list_head f2fs_hot_ilist;
-extern struct list_head f2fs_hot_candidate_ilist;
-extern unsigned int n_hot_ilist_entries;
-extern unsigned int n_hot_candidate_ilist_entries;
-extern unsigned int global_wcount;
-extern struct mutex hot_ilist_lock;
-extern struct mutex hot_candidate_ilist_lock;
-extern struct mutex global_wcount_lock;
-#endif
-
 #ifdef F2FS_GET_FS_WAF
 extern unsigned long long len_user_data;
 extern unsigned long long len_fs_write;
 extern unsigned long long len_data_write;
 extern unsigned long long len_node_write;
 extern unsigned long long len_meta_write;
-
-// TEMP for hot cold separation
-extern unsigned long long len_cold_write;
-extern unsigned long long len_hot_write;
-extern unsigned long long len_write_node_pages;
-extern unsigned long long len_sc_node_pages;
-extern unsigned long long len_cp_node_pages;
-extern unsigned long long count_len_write_node_pages;
-extern unsigned long long count_len_sc_node_pages;
-extern unsigned long long count_len_cp_node_pages;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
@@ -799,17 +773,11 @@ extern unsigned int* block_copy;
 extern unsigned int* block_copy_free;
 extern unsigned int* block_copy_secno;
 extern unsigned int* block_copy_type;
-extern unsigned int* block_copy_cold_data_blocks;
-extern unsigned int* block_copy_node_blocks;
-extern unsigned int* block_copy_cold_node_blocks;
 extern long long* gc_sec_latency;
 extern long long* gc_total_latency;
 extern int* gc_type_info;
 extern unsigned int block_copy_index;
 extern unsigned int max_block_copy_index;
-extern unsigned int count_cold_data_blocks;
-extern unsigned int count_node_blocks;
-extern unsigned int count_cold_node_blocks;
 extern bool block_copy_proc_is_called;
 #endif
 

@@ -48,16 +48,6 @@
 #define F2FS_MOUNT_INLINE_DATA		0x00000100
 #define F2FS_MOUNT_FLUSH_MERGE		0x00000200
 #define F2FS_MOUNT_NOBARRIER		0x00000400
-
-/* For Segment Cleaning Hot Cold Separation - Jinsoo Yoo */
-#define SC_HOT_COLD_SEPARATION
-#ifdef SC_HOT_COLD_SEPARATION
-	#define MAX_HOT_ENTRIES			5
-	#define MAX_HOT_CANDIDATE_ENTRIES	10
-	#define HOT_W_THRESHOLD			70
-	#define N_AGING_WCOUNT			200
-#endif
-
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
 #define test_opt(sbi, option)	(sbi->mount_opt.opt & F2FS_MOUNT_##option)
@@ -280,12 +270,6 @@ struct f2fs_inode_info {
 
 	struct list_head inmem_pages;	/* inmemory pages managed by f2fs */
 	struct mutex inmem_lock;	/* lock for inmemory pages */
-
-#ifdef SC_HOT_COLD_SEPARATION
-	struct list_head hc_list;
-	unsigned int i_wcount;
-	unsigned long hc_flags;
-#endif
 };
 
 static inline void get_extent_info(struct extent_info *ext,
@@ -1096,32 +1080,6 @@ static inline void clear_inode_flag(struct f2fs_inode_info *fi, int flag)
 		clear_bit(flag, &fi->flags);
 }
 
-#ifdef SC_HOT_COLD_SEPARATION
-enum {
-	F2FS_HOT_FILE,
-	F2FS_HOT_CANDIDATE,
-	F2FS_COLD_FILE,
-	F2FS_HC_NONE,
-};
-
-static inline void set_inode_hc_flag(struct f2fs_inode_info *fi, int flag)
-{
-	if (!test_bit(flag, &fi->hc_flags))
-		set_bit(flag, &fi->hc_flags);
-}
-
-static inline void clear_inode_hc_flag(struct f2fs_inode_info *fi, int flag)
-{
-	if (test_bit(flag, &fi->hc_flags))
-		clear_bit(flag, &fi->hc_flags);
-}
-
-static inline int is_inode_hc_flag_set(struct f2fs_inode_info *fi, int flag)
-{
-        return test_bit(flag, &fi->hc_flags);
-}
-#endif
-
 static inline void set_acl_inode(struct f2fs_inode_info *fi, umode_t mode)
 {
 	fi->i_acl_mode = mode;
@@ -1415,19 +1373,6 @@ struct page *get_lock_data_page(struct inode *, pgoff_t);
 struct page *get_new_data_page(struct inode *, struct page *, pgoff_t, bool);
 int do_write_data_page(struct page *, struct f2fs_io_info *);
 int f2fs_fiemap(struct inode *inode, struct fiemap_extent_info *, u64, u64);
-
-#ifdef SC_HOT_COLD_SEPARATION
-void list_add_hot_candidate(struct list_head *new);
-void list_del_hot_candidate(struct list_head *del);
-void list_hot_candidate_move_head(struct list_head *move);
-void list_add_hot(struct list_head *new);
-void list_del_hot(struct list_head *del, bool locked);
-void list_hot_promotion(struct list_head *new_hot);
-void list_hot_move_head(struct list_head *move);
-void inc_wcount(struct inode *inode);
-void aging_wcount(void);
-bool is_hot_inode(struct inode *inode);
-#endif
 
 /*
  * gc.c

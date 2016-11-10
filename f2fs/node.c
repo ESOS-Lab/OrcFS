@@ -1122,12 +1122,6 @@ int sync_node_pages(struct f2fs_sb_info *sbi, nid_t ino,
 	int step = ino ? 2 : 0;
 	int nwritten = 0, wrote = 0;
 
-#ifdef F2FS_GET_BLOCK_COPY_INFO
-	//TEMP for hot cold separation
-	nid_t nid;
-        struct node_info ni;
-#endif
-
 	pagevec_init(&pvec, 0);
 
 next_step:
@@ -1206,15 +1200,6 @@ continue_unlock:
 			else
 				wrote++;
 
-		#ifdef F2FS_GET_BLOCK_COPY_INFO
-			//TEMP for hot cold separation
-			nid = nid_of_node(page);
-		        get_node_info(sbi, nid, &ni);
-
-		        if(ni.ino == 3872){
-				count_cold_node_blocks++;
-			}
-		#endif
 			if (--wbc->nr_to_write == 0)
 				break;
 		}
@@ -1347,13 +1332,7 @@ static int f2fs_write_node_pages(struct address_space *mapping,
 
 	diff = nr_pages_to_write(sbi, NODE, wbc);
 	wbc->sync_mode = WB_SYNC_NONE;
-#ifdef F2FS_GET_FS_WAF
-	count_len_write_node_pages = 0;
 	sync_node_pages(sbi, 0, wbc);
-	len_write_node_pages += count_len_write_node_pages;
-#else
-	sync_node_pages(sbi, 0, wbc);
-#endif
 
 	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
 	return 0;
@@ -1372,6 +1351,7 @@ static int f2fs_set_node_page_dirty(struct page *page)
 		__set_page_dirty_nobuffers(page);
 		inc_page_count(F2FS_P_SB(page), F2FS_DIRTY_NODES);
 		SetPagePrivate(page);
+
 		return 1;
 	}
 	return 0;

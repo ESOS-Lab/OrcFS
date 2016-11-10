@@ -259,6 +259,7 @@ void f2fs_set_link(struct inode *dir, struct f2fs_dir_entry *de,
 {
 	lock_page(page);
 	f2fs_wait_on_page_writeback(page, DATA);
+
 	de->ino = cpu_to_le32(inode->i_ino);
 	set_de_type(de, inode);
 	kunmap(page);

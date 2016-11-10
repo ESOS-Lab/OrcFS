@@ -1006,9 +1006,6 @@ void write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 		checkpoint_proc_is_called = false;
 	}
 #endif
-#ifdef F2FS_GET_FS_WAF
-	count_len_cp_node_pages = 0;
-#endif
 
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "start block_ops");
 
@@ -1054,10 +1051,6 @@ out:
 		cp_info_index++;
 		count_cp_node_write = 0;
 	}
-#endif
-
-#ifdef F2FS_GET_FS_WAF
-	len_cp_node_pages += count_len_cp_node_pages;
 #endif
 }
 

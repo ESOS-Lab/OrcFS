@@ -629,6 +629,7 @@ static int f2fs_rename2(struct inode *old_dir, struct dentry *old_dentry,
 	 * VFS has already handled the new dentry existence case,
 	 * here, we just deal with "RENAME_NOREPLACE" as regular rename.
 	 */
+
 	return f2fs_rename(old_dir, old_dentry, new_dir, new_dentry);
 }
 
