@@ -501,6 +501,9 @@ static void f2fs_put_super(struct super_block *sb)
 
 	iput(sbi->node_inode);
 	iput(sbi->meta_inode);
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	iput(sbi->hc_node_inode);
+#endif
 
 	/* destroy f2fs internal modules */
 	destroy_node_manager(sbi);
@@ -1098,6 +1101,13 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->root_ino_num = le32_to_cpu(raw_super->root_ino);
 	sbi->node_ino_num = le32_to_cpu(raw_super->node_ino);
 	sbi->meta_ino_num = le32_to_cpu(raw_super->meta_ino);
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	sbi->hc_node_ino_num = le32_to_cpu(raw_super->hc_node_ino);
+	#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION_DBG
+	printk("[JS DBG] init_sb_info raw_super->hc_node_ino: %u\n", sbi->hc_node_ino_num);
+	#endif
+#endif
+
 	sbi->cur_victim_sec = NULL_SECNO;
 	sbi->max_victim_search = DEF_MAX_VICTIM_SEARCH;
 
@@ -1323,6 +1333,16 @@ try_onemore:
 	cp_node_write = kmalloc(sizeof(unsigned int)*max_cp_info_index, GFP_KERNEL);
 	if(!cp_node_write){
 		err = -ENOMEM;
+		goto free_nm;
+	}
+#endif
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	/* get an inode for hc_node space */
+	sbi->hc_node_inode = f2fs_iget(sb, F2FS_HC_NODE_INO(sbi));
+	if (IS_ERR(sbi->hc_node_inode)) {
+		f2fs_msg(sb, KERN_ERR, "Failed to read hc_node inode");
+		err = PTR_ERR(sbi->hc_node_inode);
 		goto free_nm;
 	}
 #endif

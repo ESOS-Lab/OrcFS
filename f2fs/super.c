@@ -1229,6 +1229,14 @@ try_onemore:
 
 	/* setup f2fs internal modules */
 	err = build_segment_manager(sbi);
+#ifdef JATA_DEBUG
+	printk("[JATA DBG] Checkpoint blkaddr: %ld\n", raw_super->cp_blkaddr);
+	printk("[JATA DBG] SIT blkaddr: %ld\n", raw_super->sit_blkaddr);
+	printk("[JATA DBG] NAT blkaddr: %ld\n", raw_super->nat_blkaddr);
+	printk("[JATA DBG] SSA blkaddr: %ld\n", raw_super->ssa_blkaddr);
+	printk("[JATA DBG] Main blkaddr: %ld\n", raw_super->main_blkaddr);
+#endif
+
 	if (err) {
 		f2fs_msg(sb, KERN_ERR,
 			"Failed to initialize F2FS segment manager");

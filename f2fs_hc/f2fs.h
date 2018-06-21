@@ -20,7 +20,8 @@
 #include <linux/kobject.h>
 #include <linux/sched.h>
 
-#define F2FS_BLOCK_LEVEL_HC_SEPARATION
+//#define F2FS_BLOCK_LEVEL_HC_SEPARATION
+//#define F2FS_BLOCK_LEVEL_HC_SEPARATION_DBG
 #ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
 	#define NR_HOTNESS_GROUP	(3)
 #endif
@@ -55,7 +56,7 @@
 #define F2FS_MOUNT_NOBARRIER		0x00000400
 
 /* For Two-level LRU hot Cold Separation - Jinsoo Yoo */
-#define TWO_LEVEL_LRU_HC_SEPARATION
+//#define TWO_LEVEL_LRU_HC_SEPARATION
 #ifdef TWO_LEVEL_LRU_HC_SEPARATION
 	#define MAX_HOT_ENTRIES			5
 	#define MAX_HOT_CANDIDATE_ENTRIES	10
@@ -459,6 +460,9 @@ enum count_type {
 	F2FS_DIRTY_DENTS,
 	F2FS_DIRTY_NODES,
 	F2FS_DIRTY_META,
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	F2FS_DIRTY_HC_NODES,
+#endif
 	NR_COUNT_TYPE,
 };
 
@@ -554,6 +558,11 @@ struct f2fs_sb_info {
 	struct list_head dir_inode_list;	/* dir inode list */
 	spinlock_t dir_inode_lock;		/* for dir inode list lock */
 
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	/* for hc node operation */
+	struct inode *hc_node_inode;		/* cache meta blocks */
+#endif
+
 	/* basic filesystem units */
 	unsigned int log_sectors_per_block;	/* log2 sectors per block */
 	unsigned int log_blocksize;		/* log2 block size */
@@ -561,6 +570,9 @@ struct f2fs_sb_info {
 	unsigned int root_ino_num;		/* root inode number*/
 	unsigned int node_ino_num;		/* node inode number*/
 	unsigned int meta_ino_num;		/* meta inode number*/
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	unsigned int hc_node_ino_num;		/* meta inode number*/
+#endif
 	unsigned int log_blocks_per_seg;	/* log2 blocks per segment */
 	unsigned int blocks_per_seg;		/* blocks per segment */
 	unsigned int segs_per_sec;		/* segments per section */
@@ -1409,6 +1421,13 @@ int build_segment_manager(struct f2fs_sb_info *);
 void destroy_segment_manager(struct f2fs_sb_info *);
 int __init create_segment_manager_caches(void);
 void destroy_segment_manager_caches(void);
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+void __refresh_next_blkoff(struct f2fs_sb_info *sbi, struct curseg_info *seg);
+bool __has_curseg_space(struct f2fs_sb_info *sbi, int type);
+void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del);
+void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno);
+#endif
 
 /*
  * checkpoint.c

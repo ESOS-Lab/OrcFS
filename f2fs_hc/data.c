@@ -755,6 +755,9 @@ static int f2fs_read_data_page(struct file *file, struct page *page)
 	struct inode *inode = page->mapping->host;
 	int ret;
 
+//TEMP
+	printk("%s\t%lld\tR\t%lu\t4096\n", file->f_path.dentry->d_name.name, inode->i_size, page->index);
+
 	trace_f2fs_readpage(page, DATA);
 
 	/* If the file has inline data, try to read it directly */
@@ -771,6 +774,10 @@ static int f2fs_read_data_pages(struct file *file,
 			struct list_head *pages, unsigned nr_pages)
 {
 	struct inode *inode = file->f_mapping->host;
+
+//TEMP
+	struct page *page = list_entry(pages->prev, struct page, lru);
+	printk("%s\t%lld\tR\t%lu\t%u\n", file->f_path.dentry->d_name.name, inode->i_size, page->index,nr_pages*4096);
 
 	/* If the file has inline data, skip readpages */
 	if (f2fs_has_inline_data(inode))
@@ -969,6 +976,9 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	struct dnode_of_data dn;
 	int err = 0;
 
+//TEMP
+	printk("%s\t%lld\tW\t%lld\t%u\n", file->f_path.dentry->d_name.name, inode->i_size, pos, len);
+
 	trace_f2fs_write_begin(inode, pos, len, flags);
 
 #ifdef F2FS_GET_FS_WAF
@@ -978,8 +988,8 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 	inc_wcount(inode);
 #endif
 #ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
-	f2fs_hc_update_file_hotness(inode);
-	f2fs_hc_update_block_hotness(inode, index); 
+//	f2fs_hc_update_file_hotness(inode);
+//	f2fs_hc_update_block_hotness(inode, index); 
 #endif
 	f2fs_balance_fs(sbi);
 
@@ -1391,7 +1401,6 @@ void f2fs_hc_update_file_hotness(struct inode* inode)
 {
 	int ret;
 	struct f2fs_inode_info *fi = F2FS_I(inode);
-//	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct f2fs_hc_file_info *hc_file_i = NULL;
 
 	if(fi == NULL){
@@ -1401,6 +1410,9 @@ void f2fs_hc_update_file_hotness(struct inode* inode)
 
 	/* Get hc_file page */
 	if(fi->i_hc_file == NULL){
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION_DBG
+		printk("[JS DBG] %lu hc_update_file_hotness meet NULL pointer\n", inode->i_ino);
+#endif
 		ret = f2fs_hc_get_hc_file_info(inode);
 		if(ret == -1){
 			printk("[JS DBG] get hc_file_info fail!\n");
@@ -1412,12 +1424,17 @@ void f2fs_hc_update_file_hotness(struct inode* inode)
 	/* Update the hc_file */
 	mutex_lock(&hc_file_i->hc_file_mutex);
 	hc_file_i->nwritten++;
+	set_page_dirty();
 	mutex_unlock(&hc_file_i->hc_file_mutex);
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION_DBG
+	printk("[JS DBG] %lu hc_update_file_hotness to %llu\n", inode->i_ino, hc_file_i->nwritten);
+#endif
 }
 
 void f2fs_hc_update_block_hotness(struct inode* inode, pgoff_t index)
 {
-
+	return;
 }
 
 int f2fs_hc_get_hc_file_info(struct inode* inode)
@@ -1437,6 +1454,9 @@ repeat:
 	}
 
 	if(fi->i_hc_addr != 0){
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION_DBG
+		printk("[JS DBG] %lu get_hc_file_info read data from %u\n", inode->i_ino, fi->i_hc_addr);
+#endif
 		/* Read hc_file_info page from storage */
 		err = read_hc_file_info_page(sbi, new_page, fi->i_hc_addr, READA);
 		if(err == 0){
@@ -1446,10 +1466,16 @@ repeat:
 		hc_file_i = F2FS_HC_FILE_I(new_page);
 	}
 	else{
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION_DBG
+		printk("[JS DBG] %lu get_hc_file_info init hc_file_i\n", inode->i_ino);
+#endif
 		/* Init the hc_file_info */
 		hc_file_i = F2FS_HC_FILE_I(new_page);
 		init_hc_file_info(hc_file_i);
 	}
+
+	/* Set the page dirty */
+	f2fs_set_hc_node_page_dirty(new_page);
 
 	fi->i_hc_file = hc_file_i;
 
@@ -1519,5 +1545,7 @@ block_t f2fs_hc_get_new_hc_addr(struct inode* inode, int hc_type)
 */
 	/* Unlock curseg mutex */
 	mutex_unlock(&curseg->curseg_mutex);
+
+	return new_hc_addr;
 }
 #endif

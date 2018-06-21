@@ -1367,6 +1367,20 @@ static int f2fs_set_node_page_dirty(struct page *page)
 	return 0;
 }
 
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+static int f2fs_set_hc_node_page_dirty(struct page *page)
+{
+	SetPageUptodate(page);
+	if (!PageDirty(page)) {
+		__set_page_dirty_nobuffers(page);
+		inc_page_count(F2FS_P_SB(page), F2FS_DIRTY_HC_NODES);
+		SetPagePrivate(page);
+
+		return 1;
+	}
+	return 0;
+#endif
+
 static void f2fs_invalidate_node_page(struct page *page, unsigned int offset,
 				      unsigned int length)
 {
@@ -1375,6 +1389,17 @@ static void f2fs_invalidate_node_page(struct page *page, unsigned int offset,
 		dec_page_count(F2FS_I_SB(inode), F2FS_DIRTY_NODES);
 	ClearPagePrivate(page);
 }
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+static void f2fs_invalidate_node_page(struct page *page, unsigned int offset,
+				      unsigned int length)
+{
+	struct inode *inode = page->mapping->host;
+	if (PageDirty(page))
+		dec_page_count(F2FS_I_SB(inode), F2FS_DIRTY_HC_NODES);
+	ClearPagePrivate(page);
+}
+#endif
 
 static int f2fs_release_node_page(struct page *page, gfp_t wait)
 {
@@ -1392,6 +1417,19 @@ const struct address_space_operations f2fs_node_aops = {
 	.invalidatepage	= f2fs_invalidate_node_page,
 	.releasepage	= f2fs_release_node_page,
 };
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+/*
+ * Structure of the f2fs node operations
+ */
+const struct address_space_operations f2fs_hc_node_aops = {
+	.writepage	= f2fs_write_hc_node_page,
+	.writepages	= f2fs_write_hc_node_pages,
+	.set_page_dirty	= f2fs_set_hc_node_page_dirty,
+	.invalidatepage	= f2fs_invalidate_hc_node_page,
+	.releasepage	= f2fs_release_node_page,
+};
+#endif
 
 static struct free_nid *__lookup_free_nid_list(struct f2fs_nm_info *nm_i,
 						nid_t n)

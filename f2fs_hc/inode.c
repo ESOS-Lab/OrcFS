@@ -116,9 +116,6 @@ static int do_read_inode(struct inode *inode)
 	fi->i_hc_type = (int)le32_to_cpu(ri->i_hc_type);
 #endif
 
-//TEMP
-	printk("[JS DBG] %lu[%llu][%s] read hc_addr: %u\n", inode->i_ino, inode->i_size, ri->i_name, fi->i_hc_addr);
-
 	get_extent_info(&fi->ext, ri->i_ext);
 	get_inline_info(fi, ri);
 
@@ -143,8 +140,14 @@ struct inode *f2fs_iget(struct super_block *sb, unsigned long ino)
 		trace_f2fs_iget(inode);
 		return inode;
 	}
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	if (ino == F2FS_NODE_INO(sbi) || ino == F2FS_META_INO(sbi) || ino == F2FS_HC_NODE_INO(sbi))
+		goto make_now;
+#else
 	if (ino == F2FS_NODE_INO(sbi) || ino == F2FS_META_INO(sbi))
 		goto make_now;
+#endif
 
 	ret = do_read_inode(inode);
 	if (ret)
@@ -156,6 +159,11 @@ make_now:
 	} else if (ino == F2FS_META_INO(sbi)) {
 		inode->i_mapping->a_ops = &f2fs_meta_aops;
 		mapping_set_gfp_mask(inode->i_mapping, GFP_F2FS_ZERO);
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	} else if (ino == F2FS_HC_NODE_INO(sbi)) {
+		inode->i_mapping->a_ops = &f2fs_hc_node_aops;
+		mapping_set_gfp_mask(inode->i_mapping, GFP_F2FS_ZERO);
+#endif
 	} else if (S_ISREG(inode->i_mode)) {
 		inode->i_op = &f2fs_file_inode_operations;
 		inode->i_fop = &f2fs_file_operations;
@@ -221,9 +229,6 @@ void update_inode(struct inode *inode, struct page *node_page)
 	ri->i_hc_addr = cpu_to_le32((__le32)(F2FS_I(inode)->i_hc_addr));
 	ri->i_hc_type = cpu_to_le32((__le32)(F2FS_I(inode)->i_hc_type));
 #endif
-
-//TEMP
-	printk("[JS DBG] %lu[%llu][%s] write hc_addr: %u\n", inode->i_ino, inode->i_size, ri->i_name, ri->i_hc_addr);
 
 	__set_inode_rdev(inode, ri);
 	set_cold_node(inode, node_page);

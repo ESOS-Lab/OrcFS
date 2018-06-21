@@ -466,7 +466,11 @@ static void __remove_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno,
  * Adding dirty entry into seglist is not critical operation.
  * If a given segment is one of current working segments, it won't be added.
  */
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno)
+#else
 static void locate_dirty_segment(struct f2fs_sb_info *sbi, unsigned int segno)
+#endif
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	unsigned short valid_blocks;
@@ -668,7 +672,11 @@ static void __set_sit_entry_type(struct f2fs_sb_info *sbi, int type,
 		__mark_sit_entry_dirty(sbi, segno);
 }
 
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
+#else
 static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
+#endif
 {
 	struct seg_entry *se;
 	unsigned int segno, offset;
@@ -962,8 +970,13 @@ static void __next_free_blkoff(struct f2fs_sb_info *sbi,
  * by increasing the current block offset. However, if a segment is written by
  * SSR manner, next block offset obtained by calling __next_free_blkoff
  */
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+void __refresh_next_blkoff(struct f2fs_sb_info *sbi,
+				struct curseg_info *seg)
+#else
 static void __refresh_next_blkoff(struct f2fs_sb_info *sbi,
 				struct curseg_info *seg)
+#endif
 {
 	if (seg->alloc_type == SSR)
 		__next_free_blkoff(sbi, seg, seg->next_blkoff + 1);
@@ -1097,7 +1110,11 @@ out:
 	return 0;
 }
 
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+bool __has_curseg_space(struct f2fs_sb_info *sbi, int type)
+#else
 static bool __has_curseg_space(struct f2fs_sb_info *sbi, int type)
+#endif
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
 	if (curseg->next_blkoff < sbi->blocks_per_seg)
@@ -1252,7 +1269,7 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 		len_hot_write++;
 	}
 	else{
-		printk("[JS DBG] wrong inode write: %d\n", ni.ino);
+//		printk("[JS DBG] wrong inode write: %d\n", ni.ino);
 	}
 	count_len_write_node_pages++;
 	count_len_sc_node_pages++;

@@ -1007,6 +1007,8 @@ void write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	}
 #endif
 
+dump_stack();
+
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "start block_ops");
 
 	mutex_lock(&sbi->cp_mutex);
