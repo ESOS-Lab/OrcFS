@@ -80,6 +80,11 @@ unsigned int block_copy_index = 0;
 unsigned int max_block_copy_index = 4096;
 unsigned int len_node_sync = 0;
 bool block_copy_proc_is_called = false;
+#ifdef CHECKPOINT_LAT
+//long long* checkpoint_lat = NULL;
+//unsigned int checkpoint_lat_index = 0;
+unsigned long long checkpoint_lat = 0;
+#endif
 
 #ifdef F2FS_DA_QPGC
 unsigned int *block_copy_remain = NULL;
@@ -87,6 +92,7 @@ int *gc_preemption_info = NULL;
 int *gc_n_bio = NULL;
 int *gc_n_bdirty = NULL;
 int *gc_n_moreio = NULL;
+//bool is_user_write = false;
 #endif
 
 long long get_current_utime(void)

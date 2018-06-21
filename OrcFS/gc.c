@@ -729,6 +729,7 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 	static struct gc_context gc_ctx = {
 		.has_victim = 0,
                 .latest_seg = 0,
+		.gc_type = BG_GC,
         };
 	long long start_time_gc;
 #ifdef F2FS_GET_BLOCK_COPY_INFO
@@ -741,11 +742,15 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 #endif
 #endif
 
+#ifdef CHECKPOINT_LAT
+	unsigned long long start_checkpoint;
+#endif
+
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 	struct page *sum_page;
         struct f2fs_summary_block *sum;
 	long long gc_total_time_start, gc_total_time_end;
-	long long gc_sec_time_start, gc_sec_time_end;
+	static long long gc_sec_time_start, gc_sec_time_end;
 	long long gc_cp_time_start, gc_cp_time_end;
 	gc_total_time_start = get_current_utime();
 #endif
@@ -761,12 +766,24 @@ gc_more:
 		goto stop;
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-	gc_sec_time_start = get_current_utime();
+//	gc_sec_time_start = get_current_utime();
 #endif
 
+#ifdef F2FS_DA_QPGC
+	gc_type = gc_ctx.gc_type;
+#endif
 	if (gc_type == BG_GC && has_not_enough_free_secs(sbi, nfree)) {
+#ifdef F2FS_DA_QPGC
+		gc_ctx.gc_type = gc_type = FG_GC;
+#endif
 		gc_type = FG_GC;
+#ifdef CHECKPOINT_LAT
+		start_checkpoint = (unsigned long long)get_current_utime();
 		write_checkpoint(sbi, &cpc);
+		checkpoint_lat += ((unsigned long long)get_current_utime()-start_checkpoint);
+#else
+		write_checkpoint(sbi, &cpc);
+#endif
 	}
 
 #ifdef F2FS_DA_QPGC
@@ -779,11 +796,20 @@ gc_more:
 		if (!__get_victim(sbi, &gc_ctx.segno, gc_type, NO_CHECK_TYPE))
 			goto stop;
 		gc_ctx.has_victim = true;
+
+    #ifdef F2FS_GET_BLOCK_COPY_INFO
+		gc_sec_time_start = get_current_utime();
+    #endif
+
 	}
 	segno = gc_ctx.segno;
 #else
 	if (!__get_victim(sbi, &segno, gc_type, NO_CHECK_TYPE))
 		goto stop;
+
+    #ifdef F2FS_GET_BLOCK_COPY_INFO
+	gc_sec_time_start = get_current_utime();
+    #endif
 #endif
 	ret = 0;
 
@@ -824,7 +850,6 @@ gc_more:
 
                 if(block_copy_index == 0){
                         block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
-//                      block_copy_free[block_copy_index] = free_segments(sbi);
                         block_copy_free[block_copy_index] = free_sections(sbi);
                         block_copy_secno[block_copy_index] = GET_SECNO(sbi, segno);
                         block_copy_type[block_copy_index] = GET_SUM_TYPE(&sum->footer);
@@ -834,12 +859,12 @@ gc_more:
                 }
                 else{
 #ifdef F2FS_DA_QPGC
-                        if(GET_SECNO(sbi, segno) != block_copy_secno[block_copy_index-1] || gc_ctx.latest_seg){
+//                        if(GET_SECNO(sbi, segno) != block_copy_secno[block_copy_index-1] || gc_ctx.latest_seg){
+                        if(GET_SECNO(sbi, segno) != block_copy_secno[block_copy_index-1]){
 #else
                         if(GET_SECNO(sbi, segno) != block_copy_secno[block_copy_index-1]){
 #endif
                                 block_copy[block_copy_index] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
-//                              block_copy_free[block_copy_index] = free_segments(sbi);
                                 block_copy_free[block_copy_index] = free_sections(sbi);
                                 block_copy_secno[block_copy_index] = GET_SECNO(sbi, segno);
                                 block_copy_type[block_copy_index] = GET_SUM_TYPE(&sum->footer);
@@ -863,7 +888,7 @@ gc_more:
 	*/
 	for (i = gc_ctx.latest_seg; i < sbi->segs_per_sec; i++){
 		do_garbage_collect(sbi, gc_ctx.segno + i, &ilist, gc_type);
-		if (100000 <= (get_current_utime()-start_time_gc) && (!list_empty(b_io))){
+		if (/*is_user_write ||*/ (100000 <= (get_current_utime()-start_time_gc) && (!list_empty(b_io)))){
 			gc_ctx.latest_seg = i + 1;
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
@@ -894,11 +919,17 @@ gc_more:
 				block_copy_remain[block_copy_index-1] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
         		}
 #endif
-				goto preemption;
+//			sbi->sb->f2fs_sc_preempted = true;
+
+			goto preemption;
 		}
 	}
 	gc_ctx.has_victim = false;
 	gc_ctx.latest_seg = 0;
+	gc_ctx.gc_type = BG_GC;
+
+//	sbi->sb->f2fs_sc_preempted = false;
+
 #else
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);
@@ -910,7 +941,7 @@ gc_more:
 	}
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
-#ifdef F2FS_DA_QPGC
+    #ifdef F2FS_DA_QPGC
 	bio_count = 0;
 	bdirty_count = 0;
 	moreio_count = 0;
@@ -925,18 +956,20 @@ gc_more:
 	list_for_each(temp_lh ,b_more_io){
 		moreio_count++;
 	}
-#endif
+    #endif
 	gc_sec_time_end = get_current_utime();
 	if(block_copy_index < max_block_copy_index){
                 gc_sec_latency[block_copy_index-1] = gc_sec_time_end - gc_sec_time_start;
-#ifdef F2FS_DA_QPGC
+		gc_sec_time_start = 0;
+
+    #ifdef F2FS_DA_QPGC
                 gc_n_bio[block_copy_index-1] = bio_count;
                 gc_n_bdirty[block_copy_index-1] = bdirty_count;
 		gc_n_moreio[block_copy_index-1] = moreio_count;
 		block_copy_remain[block_copy_index-1] = get_valid_blocks(sbi, segno, sbi->segs_per_sec);
+    #endif
+#endif
 	}
-#endif
-#endif
 
 	if (has_not_enough_free_secs(sbi, nfree))
 		goto gc_more;
@@ -946,14 +979,20 @@ gc_more:
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 		gc_cp_time_start = get_current_utime();
 #endif
+
 		write_checkpoint(sbi, &cpc);
+
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 		gc_cp_time_end = get_current_utime();
 		gc_cp_latency[block_copy_index-1] = gc_cp_time_end - gc_cp_time_start;
 #endif
+#ifdef CHECKPOINT_LAT
+		checkpoint_lat += (unsigned long long)(gc_cp_time_end-gc_cp_time_start);
+#endif
 	}
 #ifdef F2FS_DA_QPGC
 preemption:
+	//is_user_write = false;
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO

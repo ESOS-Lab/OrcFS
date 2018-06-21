@@ -449,6 +449,9 @@ static void f2fs_put_super(struct super_block *sb)
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
 		remove_proc_entry("valid_blocks_info", sbi->s_proc);
 #endif
+#ifdef CHECKPOINT_LAT
+		//remove_proc_entry("checkpoint_info", sbi->s_proc);
+#endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         	/* Free kernel buffers for proc filesystem */
 		kfree(block_copy);
@@ -460,6 +463,9 @@ static void f2fs_put_super(struct super_block *sb)
 		kfree(gc_total_latency);
 		kfree(gc_cp_latency);
 		kfree(gc_type_info);
+#ifdef CHECKPOINT_LAT
+		//kfree(checkpoint_lat);
+#endif
 #ifdef F2FS_DA_QPGC
 		kfree(block_copy_remain);
 		kfree(gc_preemption_info);
@@ -631,10 +637,6 @@ static int waf_info_seq_show(struct seq_file *seq, void *offset)
         len_meta_write = 0;
 	dummy_page_count = 0;
 
-//TEMP I added code about iteration_flag at 2016. 01. 20 by JT
-	/*printk("CHANGE!!\n");
-	set_iteration_flag(true);*/
-
 	return 0;
 }
 #endif
@@ -683,6 +685,21 @@ static int valid_blocks_info_seq_show(struct seq_file *seq, void *offset)
 	return 0;
 }
 #endif
+#ifdef CHECKPOINT_LAT
+/*static int checkpoint_info_seq_show(struct seq_file *seq, void *offset)
+{
+	unsigned int i;
+
+	seq_printf(seq, "CP Call : %du\n", checkpoint_lat_index);
+	for (i = 0; i<checkpoint_lat_index; i++)
+	{
+		seq_printf(seq, "%lld\n", checkpoint_lat[i]);
+	}
+	checkpoint_lat_index = 0;
+	seq_printf(seq, "Good!\n");
+	return 0;
+}*/
+#endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
@@ -699,6 +716,15 @@ static int block_copy_info_seq_show(struct seq_file *seq, void *offset)
         for(i=0; i<block_copy_index; i++){
 		seq_printf(seq, "%u\t%u\t%u\t%u\t%u\t%lld\t%lld\t%lld\t%d\n", block_copy[i], block_copy_secno[i], block_copy_free[i], block_copy_type[i], block_copy_node[i], gc_sec_latency[i], gc_cp_latency[i], gc_total_latency[i], gc_type_info[i]);
         }
+#endif
+
+#ifdef CHECKPOINT_LAT
+	seq_printf(seq, "CP Latency : %llu\n", checkpoint_lat);
+	/*for (i = 0; i<checkpoint_lat_index; i++)
+	{
+		seq_printf(seq, "%lld\n", checkpoint_lat[i]);
+	}
+	checkpoint_lat_index = 0;*/
 #endif
         block_copy_proc_is_called = true;
 
@@ -746,6 +772,12 @@ static int valid_blocks_info_open_fs(struct inode *inode, struct file *file)
 	return single_open(file, valid_blocks_info_seq_show, PDE_DATA(inode));
 }
 #endif
+#ifdef CHECKPOINT_LAT
+/*static int checkpoint_info_open_fs(struct inode *inode, struct file *file)
+{
+	return single_open(file, checkpoint_info_seq_show, PDE_DATA(inode));
+}*/
+#endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
 static int block_copy_info_open_fs(struct inode *inode, struct file *file)
@@ -777,6 +809,15 @@ static const struct file_operations f2fs_valid_blocks_info_fops = {
 	.llseek = seq_lseek,
 	.release = single_release,
 };
+#endif
+#ifdef CHECKPOINT_LAT
+/*static const struct file_operations f2fs_seq_checkpoint_info_fops = {
+	.owner = THIS_MODULE,
+	.open = checkpoint_info_open_fs,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};*/
 #endif
 
 #ifdef F2FS_GET_BLOCK_COPY_INFO
@@ -1237,6 +1278,9 @@ try_onemore:
 
 	build_gc_manager(sbi);
 
+	/* preemption info */
+//	sbi->sb->f2fs_sc_preempted = false;
+
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         block_copy = (unsigned int*)kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
         block_copy_free = (unsigned int*)kmalloc(sizeof(unsigned int)*max_block_copy_index, GFP_KERNEL);
@@ -1265,6 +1309,9 @@ try_onemore:
         }
 #endif
 
+//TEMP
+	printk("[JS DBG] f2fs_sb_info : %lu, f2fs_super_block : %lu\n", sizeof(struct f2fs_sb_info), sizeof(struct f2fs_super_block));
+
 	/* get an inode for node space */
 	sbi->node_inode = f2fs_iget(sb, F2FS_NODE_INO(sbi));
 	if (IS_ERR(sbi->node_inode)) {
@@ -1289,6 +1336,9 @@ try_onemore:
 		goto free_node_inode;
 	}
 
+//TEMP
+	printk("[JS DBG] s_dev %d\n", sbi->sb->s_dev);
+
 	sb->s_root = d_make_root(root); /* allocate root dentry */
 	if (!sb->s_root) {
 		err = -ENOMEM;
@@ -1311,6 +1361,13 @@ try_onemore:
 	if (sbi->s_proc)
 		proc_create_data("valid_blocks_info", S_IRUGO, sbi->s_proc,
 				 &f2fs_valid_blocks_info_fops, sb);
+#endif
+#ifdef CHECKPOINT_LAT
+	if (sbi->s_proc)
+	{
+		//checkpoint_lat = (long long*)kmalloc(sizeof(long long)*90000, GFP_KERNEL);
+		//proc_create_data("checkpoint_info", S_IRUGO, sbi->s_proc, &f2fs_seq_checkpoint_info_fops, sb);
+	}
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
         if (sbi->s_proc)
@@ -1370,6 +1427,7 @@ free_proc:
 #endif
 #ifdef F2FS_GET_VALID_BLOCKS_INFO
 		remove_proc_entry("valid_blocks_info", sbi->s_proc);
+		remove_proc_entry("checkpoint_info", sbi->s_proc);
 #endif
 #ifdef F2FS_GET_BLOCK_COPY_INFO
                 remove_proc_entry("block_copy_info", sbi->s_proc);

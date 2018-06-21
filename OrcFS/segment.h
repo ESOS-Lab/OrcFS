@@ -838,11 +838,17 @@ extern unsigned int block_copy_index;
 extern unsigned int max_block_copy_index;
 extern unsigned int len_node_sync;
 extern bool block_copy_proc_is_called;
+#ifdef CHECKPOINT_LAT
+//extern long long* checkpoint_lat;
+//extern unsigned int checkpoint_lat_index;
+extern unsigned long long  checkpoint_lat;
+#endif
 #ifdef F2FS_DA_QPGC
 extern unsigned int *block_copy_remain;
 extern int *gc_preemption_info;
 extern int *gc_n_bio;
 extern int *gc_n_bdirty;
 extern int *gc_n_moreio;
+//extern bool is_user_write;
 #endif
 #endif

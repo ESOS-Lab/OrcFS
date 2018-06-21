@@ -50,6 +50,7 @@ struct gc_context {
         unsigned int segno;             // segment number of victim section
         bool has_victim;                // valid var for $segno
         unsigned int latest_seg;        // segment number for next gc after preemption
+	int gc_type;
 };
 #endif
 
