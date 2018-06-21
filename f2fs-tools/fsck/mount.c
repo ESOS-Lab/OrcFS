@@ -142,6 +142,9 @@ void print_raw_sb_info(struct f2fs_sb_info *sbi)
 	DISP_u32(sb, root_ino);
 	DISP_u32(sb, node_ino);
 	DISP_u32(sb, meta_ino);
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	DISP_u32(sb, hc_node_ino);
+#endif
 	DISP_u32(sb, cp_payload);
 	DISP("%s", sb, version);
 	printf("\n");
@@ -305,6 +308,9 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->root_ino_num = le32_to_cpu(raw_super->root_ino);
 	sbi->node_ino_num = le32_to_cpu(raw_super->node_ino);
 	sbi->meta_ino_num = le32_to_cpu(raw_super->meta_ino);
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	sbi->hc_node_ino_num = le32_to_cpu(raw_super->hc_node_ino);
+#endif
 	sbi->cur_victim_sec = NULL_SEGNO;
 	return 0;
 }

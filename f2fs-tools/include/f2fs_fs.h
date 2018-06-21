@@ -21,6 +21,10 @@
 #endif
 
 #define F2FS_DA_MAP
+//#define F2FS_BLOCK_LEVEL_HC_SEPARATION 
+//#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+//	#define NR_HOTNESS_GROUP	(3)
+//#endif
 
 typedef u_int64_t	u64;
 typedef u_int32_t	u32;
@@ -304,6 +308,10 @@ enum {
 #define F2FS_NODE_INO(sbi)	(sbi->node_ino_num)
 #define F2FS_META_INO(sbi)	(sbi->meta_ino_num)
 
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	#define F2FS_HC_NODE_INO(sbi)	(sbi->hc_node_ino_num)
+#endif
+
 /* This flag is used by node and meta inodes, and by recovery */
 #define GFP_F2FS_ZERO	(GFP_NOFS | __GFP_ZERO)
 
@@ -316,6 +324,14 @@ enum {
 #define MAX_ACTIVE_LOGS	16
 #define MAX_ACTIVE_NODE_LOGS	8
 #define MAX_ACTIVE_DATA_LOGS	8
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+struct f2fs_hc_group
+{
+	__le64 nblocks;		/* # of blocks included in this group */
+	__le64 total_hotness;	/* the summation of the hotness of the member blocks */
+} __attribute__((packed));
+#endif
 
 /*
  * For superblock
@@ -348,6 +364,9 @@ struct f2fs_super_block {
 	__le32 root_ino;		/* root inode number */
 	__le32 node_ino;		/* node inode number */
 	__le32 meta_ino;		/* meta inode number */
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	__le32 hc_node_ino;		/* hc_node inode number */
+#endif
 	__u8 uuid[16];			/* 128-bit uuid for volume */
 	__le16 volume_name[512];	/* volume name */
 	__le32 extension_count;		/* # of extensions below */
@@ -395,6 +414,10 @@ struct f2fs_checkpoint {
 
 	/* SIT and NAT version bitmap */
 	unsigned char sit_nat_version_bitmap[1];
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION 
+	struct f2fs_hc_group hc_group[NR_HOTNESS_GROUP]; /* group hotness information */
+#endif
 } __attribute__((packed));
 
 /*
@@ -422,7 +445,13 @@ struct f2fs_extent {
 
 #define F2FS_NAME_LEN		255
 #define F2FS_INLINE_XATTR_ADDRS	50	/* 200 bytes for inline xattrs */
-#define DEF_ADDRS_PER_INODE	923	/* Address Pointers in an Inode */
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION 
+  #define DEF_ADDRS_PER_INODE	922	/* Address Pointers in an Inode */
+#else
+  #define DEF_ADDRS_PER_INODE	923	/* Address Pointers in an Inode */
+#endif
+
 #define ADDRS_PER_INODE(fi)	addrs_per_inode(fi)
 #define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
@@ -471,6 +500,10 @@ struct f2fs_inode {
 	__u8 i_dir_level;		/* dentry_level for large dir */
 
 	struct f2fs_extent i_ext;	/* caching a largest extent */
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	__le32 i_hc_addr; 		/* Pointer to f2fs_hc_file */
+#endif
 
 	__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
 

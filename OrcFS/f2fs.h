@@ -25,6 +25,9 @@
 
 /* Define for Quasi Preemptive GC - Joontaek Oh, 160720 */
 #define F2FS_DA_QPGC
+
+#define CHECKPOINT_LAT
+
 #define N_SEGS_FOR_PREEMPTION	16
 #define MIN_SECTIONS_HARD_THRESHOLD	6
 

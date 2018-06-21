@@ -241,6 +241,10 @@ static int f2fs_prepare_super_block(void)
 
 	blocks_for_nat = ALIGN(total_valid_blks_available, NAT_ENTRY_PER_BLOCK);
 
+//TEMP
+	printf("[JS DBG] SB size: %d CP size: %d\n", sizeof(struct f2fs_super_block), sizeof(struct f2fs_checkpoint));
+	printf("[JS DBG] %d %d %d\n", total_valid_blks_available, blocks_for_nat, NAT_ENTRY_PER_BLOCK);
+
 	set_sb(segment_count_nat, SEG_ALIGN(blocks_for_nat));
 	/*
 	 * The number of node segments should not be exceeded a "Threshold".
@@ -328,6 +332,10 @@ static int f2fs_prepare_super_block(void)
 	set_sb(node_ino, 1);
 	set_sb(meta_ino, 2);
 	set_sb(root_ino, 3);
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	set_sb(hc_node_ino, 4);
+#endif
 
 	total_zones = get_sb(segment_count_main) / (config.segs_per_zone);
 	if (total_zones <= 6) {
@@ -521,6 +529,13 @@ static int f2fs_write_check_point_pack(void)
 			 get_sb(log_blocks_per_seg)) / 8);
 
 	set_cp(checksum_offset, CHECKSUM_OFFSET);
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+        for(i = 0; i<NR_HOTNESS_GROUP; i++){
+                set_cp(hc_group[i].nblocks, 0);
+                set_cp(hc_group[i].total_hotness, 0);
+        }
+#endif
 
 	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, cp, CHECKSUM_OFFSET);
 	*((__le32 *)((unsigned char *)cp + CHECKSUM_OFFSET)) =
@@ -852,6 +867,12 @@ static int f2fs_update_nat_root(void)
 	/* update meta nat */
 	nat_blk->entries[get_sb(meta_ino)].block_addr = cpu_to_le32(1);
 	nat_blk->entries[get_sb(meta_ino)].ino = sb.meta_ino;
+
+#ifdef F2FS_BLOCK_LEVEL_HC_SEPARATION
+	/* update hc_node nat */
+	nat_blk->entries[get_sb(hc_node_ino)].block_addr = cpu_to_le32(1);
+	nat_blk->entries[get_sb(hc_node_ino)].ino = sb.hc_node_ino;
+#endif
 
 	blk_size_bytes = 1 << get_sb(log_blocksize);
 	nat_seg_blk_offset = get_sb(nat_blkaddr);
