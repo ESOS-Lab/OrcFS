@@ -47,6 +47,9 @@
 
 #include <asm/mman.h>
 
+/* 180524 - JSYoo Added: get latency of generic_perform_write */
+//#define GET_WRITE_LATENCY
+
 /*
  * Shared mappings implemented 30.11.1994. It's not fully working yet,
  * though.
@@ -2474,6 +2477,24 @@ ssize_t generic_perform_write(struct file *file,
 		size_t copied;		/* Bytes copied from user */
 		void *fsdata;
 
+#ifdef GET_WRITE_LATENCY
+		struct timeval tpstart_r, tpend_r;
+		long utime_r;
+		long stime_r;
+
+		long utime_begin = 0;
+		long utime_end = 0;
+		long utime_balance = 0;
+
+		static long total_begin_nopre = 0;
+		static long total_end_nopre = 0;
+		static long total_balance_nopre = 0;
+
+		static long total_begin_pre = 0;
+		static long total_end_pre = 0;
+		static long total_balance_pre = 0;
+#endif
+
 		offset = (pos & (PAGE_CACHE_SIZE - 1));
 		bytes = min_t(unsigned long, PAGE_CACHE_SIZE - offset,
 						iov_iter_count(i));
@@ -2494,8 +2515,28 @@ again:
 			break;
 		}
 
+#ifdef GET_WRITE_LATENCY
+		if(mapping->host->i_sb->s_dev == 8388624)
+			do_gettimeofday(&tpstart_r);
+#endif
 		status = a_ops->write_begin(file, mapping, pos, bytes, flags,
 						&page, &fsdata);
+
+#ifdef GET_WRITE_LATENCY
+		if(mapping->host->i_sb->s_dev == 8388624){
+			do_gettimeofday(&tpend_r);
+	
+			utime_r = (tpend_r.tv_usec - tpstart_r.tv_usec);
+			stime_r = (tpend_r.tv_sec - tpstart_r.tv_sec);
+
+			if(utime_r < 0){
+				utime_r += 1000000;
+				stime_r -= 1;
+			}
+			utime_begin = stime_r * 1000000 + utime_r;
+		}
+#endif
+
 		if (unlikely(status < 0))
 			break;
 
@@ -2505,8 +2546,28 @@ again:
 		copied = iov_iter_copy_from_user_atomic(page, i, offset, bytes);
 		flush_dcache_page(page);
 
+#ifdef GET_WRITE_LATENCY
+		if(mapping->host->i_sb->s_dev == 8388624)
+			do_gettimeofday(&tpstart_r);
+#endif
 		status = a_ops->write_end(file, mapping, pos, bytes, copied,
 						page, fsdata);
+
+#ifdef GET_WRITE_LATENCY
+		if(mapping->host->i_sb->s_dev == 8388624){
+			do_gettimeofday(&tpend_r);
+	
+			utime_r = (tpend_r.tv_usec - tpstart_r.tv_usec);
+			stime_r = (tpend_r.tv_sec - tpstart_r.tv_sec);
+
+			if(utime_r < 0){
+				utime_r += 1000000;
+				stime_r -= 1;
+			}
+			utime_end = stime_r * 1000000 + utime_r;
+		}
+#endif
+
 		if (unlikely(status < 0))
 			break;
 		copied = status;
@@ -2530,7 +2591,49 @@ again:
 		pos += copied;
 		written += copied;
 
+#ifdef GET_WRITE_LATENCY
+		if(mapping->host->i_sb->s_dev == 8388624)
+			do_gettimeofday(&tpstart_r);
+#endif
 		balance_dirty_pages_ratelimited(mapping);
+
+#ifdef GET_WRITE_LATENCY
+		if(mapping->host->i_sb->s_dev == 8388624){
+			do_gettimeofday(&tpend_r);
+
+			utime_r = (tpend_r.tv_usec - tpstart_r.tv_usec);
+			stime_r = (tpend_r.tv_sec - tpstart_r.tv_sec);
+
+			if(utime_r < 0){
+				utime_r += 1000000;
+				stime_r -= 1;
+			}
+			utime_balance = stime_r * 1000000 + utime_r;
+
+			if(mapping->host->i_sb->f2fs_sc_preempted == true){
+
+				total_begin_pre +=  utime_begin;
+				total_end_pre += utime_end;
+				total_balance_pre += utime_balance;
+			}
+			else{
+
+				total_begin_nopre +=  utime_begin;
+				total_end_nopre += utime_end;
+				total_balance_nopre += utime_balance;
+			}
+
+			printk("%ld\t%ld\t%ld\t%ld\t%ld\t%ld\n", 
+						total_begin_pre,
+						total_end_pre,
+						total_balance_pre, 
+						total_begin_nopre,
+						total_end_nopre,
+						total_balance_nopre);
+
+		}
+#endif
+
 		if (fatal_signal_pending(current)) {
 			status = -EINTR;
 			break;

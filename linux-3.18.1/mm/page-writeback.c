@@ -1450,18 +1450,18 @@ static void balance_dirty_pages(struct address_space *mapping,
 		if (pause < min_pause) {
 			trace_balance_dirty_pages(bdi,
 						  dirty_thresh,
-						  background_thresh,
-						  nr_dirty,
-						  bdi_thresh,
-						  bdi_dirty,
-						  dirty_ratelimit,
-						  task_ratelimit,
-						  pages_dirtied,
-						  period,
-						  min(pause, 0L),
-						  start_time);
-			if (pause < -HZ) {
-				current->dirty_paused_when = now;
+							  background_thresh,
+							  nr_dirty,
+							  bdi_thresh,
+							  bdi_dirty,
+							  dirty_ratelimit,
+							  task_ratelimit,
+							  pages_dirtied,
+							  period,
+							  min(pause, 0L),
+							  start_time);
+				if (pause < -HZ) {
+					current->dirty_paused_when = now;
 				current->nr_dirtied = 0;
 			} else if (period) {
 				current->dirty_paused_when += period;
@@ -1492,6 +1492,10 @@ pause:
 		__set_current_state(TASK_KILLABLE);
 		io_schedule_timeout(pause);
 
+//TEMP
+		if(mapping->host->i_sb->s_dev == 8388624){
+			printk("%ld\t%ld\t%lu\t%lu\t%ld\t%d\t%lu\n", min_pause, max_pause, task_ratelimit, dirty_ratelimit, pause, HZ, pages_dirtied);
+		}
 		current->dirty_paused_when = now + pause;
 		current->nr_dirtied = 0;
 		current->nr_dirtied_pause = nr_dirtied_pause;
